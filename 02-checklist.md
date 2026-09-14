@@ -27,7 +27,7 @@
 - [ ] `PH3-WI03` GeNN adapter, WSL2 only, non-blocking
 
 ## PH4 — Connectome + generators
-- [ ] `PH4-WI01` `ConnectomeDataset` protocol + toy/synthetic/random impls
+- [x] `PH4-WI01` `ConnectomeDataset` protocol + toy/synthetic/random impls (DONE 2026-09-14: 4 tests green, protocol + determinism + modularity + density band — see notes entry 29)
 - [ ] `PH4-WI02` FlyWire: `dataset auth`, resumable download, normalized schema, `connectome_report.json/html`; resolve 50M-vs-54.5M in manifest
 - [ ] `PH4-WI03` `MotifCatalog` with 100K-instantiation query
 - [ ] `PH4-WI04` All 8 generators + metadata; duplication-divergence; modular preservation; `CognitiveRole` (no fake human regions)

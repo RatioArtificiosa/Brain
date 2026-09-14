@@ -680,6 +680,23 @@ release profile. Full suite 127 green, all four gates clean.
 
 ---
 
+## 2026-09-14 · Entry 29 — PH4-WI01 done: the dataset contract the fly will plug into
+
+**Built (supervisor):** `connectome/` package — `ConnectomeDataset` runtime-checkable
+protocol (name/provenance/neurons/successors/edge_count) + three implementations:
+hand-exact ToyDataset (chain + recurrence + hub + registered isolates), seeded
+planted-partition SyntheticDataset (module dominance asserted, not assumed), seeded
+G(n,p) RandomDataset (density inside a 5σ band) as the null model. 4 tests green.
+
+**Small honest moments:** ruff caught my `x == x` NaN check (replaced with explicit
+`math.isnan`); file layout fixed before commit (`dataset.py`, not `__init__.py`).
+`random.Random` (not global random, not keyed stream — appropriate tier: dataset
+construction, never the hot loop) keeps everything reproducible from params alone.
+
+**Next:** PH4-WI02 (FlyWire ingestion: auth, chunked download, normalized schema).
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
