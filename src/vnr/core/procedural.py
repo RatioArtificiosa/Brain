@@ -86,6 +86,8 @@ class ConnectivityParams:
     connectivity_version: int = 1
     out_degree: int = 64
     weight: float = 0.5
+    weight_std: float = 0.0
+    weight_bits: int | None = None
     delay_ticks: int = 1
 
     def __post_init__(self) -> None:
@@ -107,6 +109,19 @@ class ConnectivityParams:
             raise TypeError("weight must be a number")
         if not math.isfinite(self.weight):
             raise ValueError("weight must be finite")
+        if not isinstance(self.weight_std, (int, float)) or isinstance(
+            self.weight_std, bool
+        ):
+            raise TypeError("weight_std must be a number")
+        if not math.isfinite(self.weight_std) or self.weight_std < 0:
+            raise ValueError("weight_std must be a non-negative finite number")
+        if self.weight_bits is not None:
+            if not isinstance(self.weight_bits, int) or isinstance(
+                self.weight_bits, bool
+            ):
+                raise TypeError("weight_bits must be an int or None")
+            if not 1 <= self.weight_bits <= 32:
+                raise ValueError("weight_bits must be in 1..32 or None")
         if not isinstance(self.delay_ticks, int) or isinstance(self.delay_ticks, bool):
             raise TypeError("delay_ticks must be an int")
         if self.delay_ticks < 0:
@@ -151,10 +166,38 @@ class ProceduralConnectivity:
         ]
 
     def assign_weights(self, source_id: int) -> list[float]:
-        """Stage 2: per-edge weights. Oracle uses the uniform rule weight;
-        weight distributions arrive with the PH4 generators."""
+        """Stage 2: per-edge weights.
+
+        Defaults reproduce the uniform rule weight exactly (fast path, and the
+        §68 determinism gate pins this behavior). With ``weight_std > 0`` each
+        edge draws ``weight + std * (2u - 1)`` from the keyed uniform stream
+        (same D2.3 key family, edge index as salt; disjoint from target draws
+        by domain tag and from drive draws by population id). With
+        ``weight_bits`` set, weights quantize to ``2**bits`` uniform levels —
+        the compression knob the §71 equivalence experiment turns.
+        """
         self._check_source(source_id)
-        return [float(self.params.weight)] * self.params.out_degree
+        p = self.params
+        if p.weight_std == 0 and p.weight_bits is None:
+            return [float(p.weight)] * p.out_degree
+        lo = float(p.weight) - float(p.weight_std)
+        hi = float(p.weight) + float(p.weight_std)
+        out = []
+        for edge in range(p.out_degree):
+            u = keyed_uniform(
+                p.global_seed,
+                source_id,
+                p.target_population_id,
+                p.connectivity_version,
+                edge,
+            )
+            w = float(p.weight) + float(p.weight_std) * (2.0 * u - 1.0)
+            if p.weight_bits is not None and hi > lo:
+                levels = 2**p.weight_bits - 1
+                step = (hi - lo) / levels
+                w = lo + round((w - lo) / (hi - lo) * levels) * step
+            out.append(w)
+        return out
 
     def assign_delays(self, source_id: int) -> list[int]:
         """Stage 3: per-edge delivery delays in integer ticks (D2.4)."""

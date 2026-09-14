@@ -130,3 +130,33 @@ def test_invalid_inputs_rejected():
         ConnectivityParams(global_seed=2**64)
     with pytest.raises(TypeError):
         ConnectivityParams(connectivity_version=1.5)  # type: ignore[arg-type]
+
+
+def test_weight_distribution_deterministic_and_bounded():
+    conn = _conn(out_degree=64, weight=0.5, weight_std=0.2)
+    first = conn.assign_weights(7)
+    assert first == conn.assign_weights(7)
+    assert len(first) == 64 and len(set(first)) > 1
+    assert all(0.3 <= w <= 0.7 for w in first)
+
+
+def test_weight_quantization_levels_and_exact_default():
+    assert _conn(out_degree=8).assign_weights(3) == [0.5] * 8
+    q = _conn(out_degree=200, weight=0.5, weight_std=0.2, weight_bits=2).assign_weights(
+        3
+    )
+    assert len(set(q)) <= 4
+    assert all(0.3 - 1e-9 <= w <= 0.7 + 1e-9 for w in q)
+    q8 = _conn(
+        out_degree=200, weight=0.5, weight_std=0.2, weight_bits=8
+    ).assign_weights(3)
+    assert len(set(q8)) <= 256
+
+
+def test_weight_params_rejected():
+    with pytest.raises(ValueError, match="weight_std must be a non-negative"):
+        _conn(weight_std=-0.1)
+    with pytest.raises(ValueError, match="weight_bits must be in"):
+        _conn(weight_bits=0)
+    with pytest.raises(TypeError):
+        _conn(weight_bits="8")  # type: ignore[arg-type]

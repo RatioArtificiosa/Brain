@@ -39,7 +39,10 @@ def test_message_points_at_checklist():
     assert "02-checklist.md" in msg and "heartbeat" in msg
 
 
-def test_dry_run_fires_without_sending(tmp_path):
+def test_dry_run_fires_without_sending(tmp_path, monkeypatch):
+    # Hermetic: the live proxy (if up) would otherwise override the stale
+    # heartbeat with real traffic age. Empty URL disables the proxy check.
+    monkeypatch.setenv("VNR_PROXY_WATCHDOG_URL", "")
     watch = _watch(tmp_path, "PAUSED", 120)
     line = check_once(watch, 30.0, 900.0, deque(), 10, dry_run=True)
     assert line is not None and line.startswith("WAKEUP")
