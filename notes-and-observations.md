@@ -296,7 +296,53 @@ No duplicate commit made; nothing uncommitted (`git status` clean both repos).
 re-check `git log` in BOTH repos, not just the checklist file. Checklist is a lagging
 indicator when another writer is active.
 
-**Next:** PH1-WI04 active frontier.
+---
+
+## 2026-09-14 · Entry 11 — PH1-WI04 done: six-state active-frontier oracle
+
+**Did:** `vnr/src/vnr/core/frontier.py` (`FrontierState` 6-state enum, `FrontierParams`
+frozen + validated, `FrontierEntry`, `ActiveFrontier`) implements plan PH1-WI04 / spec §25:
+lifecycle `DORMANT → CANDIDATE → ACTIVE → QUIESCENT → EVICTING → EVICTED`, with re-entry
+`EVICTED → CANDIDATE` and rescue `QUIESCENT/EVICTING → ACTIVE` on renewed activity.
+Event-driven `observe(id, tick)` + periodic sweep `update(tick)`; all ticks int (D2.4),
+`update` ticks non-decreasing so replays are deterministic (transitions emitted in sorted
+ID order). `tests/test_frontier.py`: 15 tests — single-observe never activates, full
+evidence count promotes, candidate timeout abandons, single idle tick never demotes,
+quiet→evict band ordering, reactivation/rescue counters, evicted re-entry needs full
+evidence again, resident-set/counts consistency, determinism, validation, 100K scale.
+
+**Hysteresis design (the point of the item):** creation needs `activate_count ≥ 2`
+(default 3) observations; deletion needs `quiet_ticks` (default 100) idle to cool plus
+`evict_ticks` (default 1000, constrained `> quiet_ticks`) to request eviction, with one
+full sweep in `EVICTING` before `EVICTED`. Unknown IDs read as `DORMANT` without creating
+records (queries cause no churn); `RESIDENT_STATES = {ACTIVE, QUIESCENT, EVICTING}` is the
+budget-relevant set for PH1-WI05/PH5. Cumulative stats: activations, reactivations,
+quiet_demotions, eviction_requests, evictions, candidate_abandons + per-record
+`resident_ticks`.
+
+**Measurements:** full suite 57 passed in ~23 s (dominated by the 1M-ID collision test),
+`ruff check` + `format --check` clean on both new files, 100K-ID observe 0.20 s (~500K/s)
++ full sweep 0.07 s — ample for the reference oracle; backends own production scale.
+
+**What I got wrong:** first draft typed `counts()` as `dict[FrontierState, FrontierState
+| int]` (copy slip) and split the QUIESCENT/EVICTING rescue into identical branches —
+both caught by `ruff check` (RUF022, SIM114), fixed (`dict[FrontierState, int]`, single
+`in (QUIESCENT, EVICTING)` branch), suite re-run green. Note: repo-wide `ruff format
+--check` flags 6 pre-existing files I did not touch (cli/config/hardware/tests/watchdog —
+likely a ruff-version drift vs earlier "clean" claims); left alone, noted here. New files
+are format-clean.
+
+**Concurrent-writer note:** at tick start `vnr/docs/assets/hero.svg` (referenced by the
+showcase README) was uncommitted; mid-tick the supervisor landed it as `f388fc6` (world-facing
+presentation README + hero graphic) and my push (`f388fc6..15d94da`) carried both. Same lesson
+as entry 10: re-check `git log` in both repos before concluding work is missing.
+
+**Limitations:** `EVICTING → EVICTED` completes on the next sweep unconditionally (idle is
+guaranteed only because any `observe` would already have rescued to `ACTIVE`); the real
+persist-transient-first eviction semantics arrive in PH1-WI05, which will drive this
+machine. `update()` is O(tracked) per sweep — fine for the oracle.
+
+**Next:** PH1-WI05 materialization/eviction.
 
 ---
 
