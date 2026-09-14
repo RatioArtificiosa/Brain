@@ -871,3 +871,29 @@ neuron 9, procedural 14, reference 4, scaling 4, session_watchdog 7,
 synapse_equivalence 5, torch 6, watchdog 7.
 
 **Next:** PH4-WI03 (MotifCatalog).
+
+---
+
+## 2026-09-14 · Entry 33 — Password unblocked WSL; public FlyWire OPEN; 1M clean rows
+
+**Fix 3 (owner password worked):** sudo apt delivered g++ 11.4 + pip + git + numpy +
+SWIG 4.0.2 + pkg-config into the newer Ubuntu; GeNN 5.4.0 source building now.
+PyPI has NO pygenn project (404) and the `genn` name is an unrelated text package —
+source build was the only path; password made it possible.
+
+**Fix 1 (Gemini's CAVE method worked):** CAVE_TOKEN env + cloudvolume secret file +
+correct datastack = open. `flywire_fafb_public` OPEN with versions [630, 783];
+production stays 403 (account lacks fafb view — approval still the path for it).
+Key discovery: `synapses_nt_v1` holds **244,358,226 contact rows** (pre/post root
+ids + 6 NT probabilities) — the "50M" figure counts something else (likely
+aggregated connections); manifest will record measured numbers, resolving the
+ambiguity with data. Query lessons: 500K pages → server 500/503; 50K pages with
+split_positions=False are stable (~5–12K rows/s, decays with OFFSET).
+
+**Pilot corpus: 992,991 clean rows** (20 parquet chunks, zero-root 0.7% dropped +
+counted, NT distribution GABA 19 / ACH 46.6 / GLUT 17.8 / OCT 1.2 / SER 5.3 /
+DOP 10.2 %, conf mean 0.79, 285K unique neurons). Commit `bulk_synapses.py`
+(resumable cursor, retry/backoff, zero-drop, manifest finalizer) + probes.
+
+**Next:** GeNN build verdict; id-range paging for the 244M bulk (OFFSET decay
+makes naive paging 100h+); then PH4-WI03 motifs on REAL pilot data.
