@@ -558,3 +558,26 @@ miss either site).
 
 **Next:** PH2-WI03 (§71 synapse virtualization, statistical equivalence).
 
+---
+
+## 2026-09-14 · Entry 19 — Outside messenger: the watchdog that talks INTO the session
+
+**Root-cause upgrade (owner intel):** the model gateway at 127.0.0.1:8120 is the owner's own
+node process (`muse-proxy.js` — NEVER kill node). The tick-worker failures were a proxy
+outage ("lost access"), not stuck loops: dead workers, not wedged ones. Monitors,
+schedulers, and subagents all depend on things that can die; the fix is an outside OS
+process with no harness dependencies.
+
+**Design (`scripts/session_watchdog.py`, detached PID 35140):** every 15 s it checks the
+heartbeat file; on PAUSED+30 s-stale or ACTIVE+900 s-stale it runs
+`grok -p <msg> -r <session-id>`, which lands in this session as a new turn. Guards: one
+send per episode (re-arms on fresh heartbeat), 10 sends/hour hard cap with backoff, no
+session id → log-only, per-iteration fault survival, PID in `.watch/watchdog.pid`
+(stop = kill that PID). 5 unit tests green (decision matrix, message content, dry-run
+no-send proof, missing-id silence, cap backoff); ruff check + format clean.
+
+**Live test armed on deploy:** status=PAUSED + backdated heartbeat → expect a watchdog
+message to arrive in-session within ~30 s, then continued checklist work. If the message
+never arrives, suspect `grok -p -r` against a live TUI (concurrent-session semantics
+unverified) — diagnose from `.watch/sends.log` return codes, not by guessing.
+
