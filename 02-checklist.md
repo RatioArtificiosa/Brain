@@ -23,7 +23,7 @@
 
 ## PH3 — Backends
 - [x] `PH3-WI01` NumPy vectorized CPU backend reproduces oracle exactly (DONE 2026-09-14: 5 tests green, bit-exact on 2 nets + single-neuron tick parity, B003 1.98× B001, full suite 121 green — see notes entry 25)
-- [ ] `PH3-WI02` PyTorch CUDA backend: Philox keyed RNG, VRAM manager; **verify sm_52 first** (B002/B004–B008). Rust native-core spike in parallel (PyO3 event kernel; rust-analyzer + clippy clean; must beat torch on events/sec to proceed)
+- [x] `PH3-WI02` PyTorch backend + Rust spike (DONE 2026-09-14, verified twice: torch CPU bit-exact, Rust cross-language bit-exact 0.15ms vs numpy 30ms vs torch-cpu 250ms, CUDA blocked cu121-retired — see notes entries 27/28. Box re-applied: a concurrent edit had clobbered the first flip — see entry 30.)
 - [ ] `PH3-WI03` GeNN adapter, WSL2 only, non-blocking
 
 ## PH4 — Connectome + generators
