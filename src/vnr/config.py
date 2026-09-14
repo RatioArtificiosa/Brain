@@ -27,7 +27,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
 def validate_config(data: dict[str, Any]) -> None:
     """Raise ValueError listing every schema violation found (fail loud, all at once)."""
     if not isinstance(data, dict):
-        raise ValueError("config root must be a mapping")
+        raise TypeError(f"config root must be a mapping, got {type(data).__name__}")
     errors = [f"missing section: {key}" for key in _REQUIRED_TOP_LEVEL if key not in data]
     exp = data.get("experiment", {})
     if not isinstance(exp, dict) or "id" not in exp:

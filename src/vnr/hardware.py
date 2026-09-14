@@ -63,18 +63,21 @@ def _windows_total_ram() -> int:
         status.dwLength = ctypes.sizeof(_MemStatus)
         if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return int(status.ullTotalPhys)
-    except Exception:
-        pass
+    except (AttributeError, OSError):
+        # Non-Windows (no ctypes.windll) or API failure: caller treats 0 as unknown.
+        # Logging lands in PH5-WI05; until then silence here is a documented choice.
+        return 0
     return 0
 
 
 def _nvidia_smi(fields: str) -> str | None:
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # noqa: S603 — fixed argv, no shell
             ["nvidia-smi", f"--query-gpu={fields}", "--format=csv,noheader"],
             capture_output=True,
             text=True,
             timeout=15,
+            check=False,  # returncode inspected below; missing GPU is normal
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
