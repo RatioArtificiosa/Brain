@@ -599,6 +599,27 @@ WI04 back to WI01's bit-exactness proof. Custom thresholds auditable in-result.
 
 ---
 
+## 2026-09-14 · Entry 24 — PH2-WI05 done: the gate's first catch was my own config
+
+**Built (supervisor, on POKE wake):** `backend/graph_health.py` — five checks (exploding /
+dead / lockstep-synchrony / hub-Gini / isolation) with values + bands in-report,
+`GraphHealthError` carrying every fired message; 9 tests green, each failure mode
+isolated to its own check (verified individually, not just overall).
+
+**The gate earned its existence immediately:** my integration test used a 120-tick
+reference run whose drive thirds (40 ticks) never reach the ~81-tick climb to threshold —
+the gate failed it as SILENT, correctly. Fixed the config (600 ticks), kept the story in
+the test as a comment. A gate that catches its author's mistake on day one is a gate
+that works.
+
+**PH2 VALIDATION GATE NOW CLOSED** (WI01–WI05 green): virtualization fidelity, 1M/50K
+scaling, synapse equivalence, per-metric fidelity, graph health. Per plan §6, FlyWire
+ingest (PH4) is unblocked — but PH3 backends come first in build order.
+
+**Next:** PH3-WI01 (NumPy vectorized CPU backend, bit-exact vs oracle).
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's

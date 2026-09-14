@@ -19,7 +19,7 @@
 - [x] `PH2-WI02` §70 1M-virtual/50K-budget run without full materialization (DONE 2026-09-14: 4 tests green, 10,488 spikes / 167,808 events / peak exactly 50,000 / 156,642 evictions, full suite 86 green — see notes entry 17)
 - [x] `PH2-WI03` §71 synapse virtualization, statistical equivalence (DONE 2026-09-14: 5 tests green, exact/8-bit/4-bit/2-bit/1-bit all r=1.0 — drive-dominated regime caveat, full suite 101 green — see notes entry 22)
 - [x] `PH2-WI04` §72 `StructuralFidelityScore` per-metric distances (DONE 2026-09-14: 6 tests green, complementary-metrics proof, explicit-vs-virtualized gate passes, full suite 107 green — see notes entry 23)
-- [ ] `PH2-WI05` §73 graph-health gate (explode/dead/sync/hub/isolate → fail loud)
+- [x] `PH2-WI05` §73 graph-health gate (explode/dead/sync/hub/isolate → fail loud) (DONE 2026-09-14: 9 tests green, each mode isolated to its check, gate caught my own silent config — see notes entry 24)
 
 ## PH3 — Backends
 - [ ] `PH3-WI01` NumPy vectorized CPU backend reproduces oracle exactly (B001/B003)
