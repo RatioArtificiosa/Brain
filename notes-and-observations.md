@@ -897,3 +897,20 @@ DOP 10.2 %, conf mean 0.79, 285K unique neurons). Commit `bulk_synapses.py`
 
 **Next:** GeNN build verdict; id-range paging for the 244M bulk (OFFSET decay
 makes naive paging 100h+); then PH4-WI03 motifs on REAL pilot data.
+
+---
+
+## 2026-09-14 · Entry 34 — Posture breach owned: broad git add swept their files
+
+**What happened:** my `git add scripts/` swept the parallel builder's uncommitted work
+(`session_watchdog.py` poke integration, `tui_poke.ps1`) into my commit `03cca35`,
+already pushed. The content is good and belongs in the repo — the breach is
+ATTRIBUTION, not substance. Own it plainly: I broke my own rule.
+
+**Repair, not rewrite:** pushed history stays (rewriting public history over an
+attribution footnote would be worse). Record: the poke/TUI-paste architecture,
+proxy `/__watchdog` endpoint design, and keepworking plugin are the parallel
+builder's design; my contributions in that area are diagnosis, tests, lint/format,
+and the stderr-logging + singleton fixes. Standing rule amended: NEVER bare
+directory adds — explicit paths only, and `git status` re-read between add and
+commit when another writer is active.
