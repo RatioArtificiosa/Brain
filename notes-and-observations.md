@@ -436,3 +436,42 @@ learned-first ordering (asserted via the `writes` journal) are what's proven her
 `evict_neuron` is single-ID; batch sweeps loop in sorted order at the call site.
 
 **Next:** PH1-WI06 procedural connectivity.
+
+---
+
+## 2026-09-14 · Entry 15 — PH1-WI06 done: procedural connectivity oracle, §68 exact
+
+**Did:** `vnr/src/vnr/core/procedural.py` (`ProceduralConnectivity`,
+`ConnectivityParams`, `keyed_uniform`) implements plan PH1-WI06 / spec §22 with D2.3
+keyed RNG: pipeline stages sample-targets → assign-weights → assign-delays → events,
+every draw a pure function of `(global_seed, source_id, target_population_id,
+connectivity_version, salt, domain)`. Targets never depend on `tick` — a re-spiking
+source replays the same fan-out, shifted by `tick + delay`. `tests/test_procedural.py`:
+11 tests — pipeline contract, §68 100-calls-identical, tick-shift stability, seed/version
+controlled divergence, stage/pipeline agreement, EventQueue handoff, no-collapse spread,
+uniform range/stability, validation, 10K-source benchmark.
+
+**Keying design:** one blake2b layout for all draws; `domain` separates the target
+stream (salt = edge index) from the uniform stream (`keyed_uniform`, validated
+non-negative salt) so the two can never collide. Reference RNG is stdlib blake2b
+(counter-style, stateless, order-independent); PH3 CUDA will use torch Philox over the
+identical key layout, and target sets must match exactly. Oracle uses uniform rule
+weight/delay — weight/delay *distributions* arrive with the PH4 generators, logged as
+the deferred scope with re-entry condition (not a silent drop).
+
+**Measurements:** full suite 78 passed in ~28 s, `ruff check` + `format --check` clean
+on both new files, 10K sources × 64 edges = 640K events in 3.30 s (~194K edges/s).
+Same recorded rationale as WI01: generation runs at graph-build/spike time per source,
+never in the per-event hot loop, so pure-Python throughput is sufficient for the oracle;
+kernels own production scale.
+
+**What I got wrong:** first draft had two key layouts (inline XOR-mix in `sample_targets`
+vs the packed struct in `keyed_uniform`) plus an obscure `^`/`&` precedence mix and an
+awkward negative-salt domain hack — all caught on re-read before tests ran, unified into
+`_keyed_int` + explicit `domain`. The re-read-the-diff habit keeps paying.
+
+**Deviation noted:** plan sketches `generate_outgoing_events(src, ctx)` with passed
+context; implemented as a method on the params-bound `ProceduralConnectivity` (context is
+the instance). Same information, cleaner lifecycle — no plan edit needed beyond this note.
+
+**Next:** PH2-WI01 §69 virtualization-vs-explicit (PH1 complete — deterministic core done).

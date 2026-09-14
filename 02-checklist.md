@@ -12,7 +12,7 @@
 - [x] `PH1-WI03` Event engine: `NeuralEvent`, int-tick priority queue, 100K ordering test (DONE 2026-09-14: 8 tests green, 100K push 1.21 s / drain 0.17 s, ruff clean — see notes entry 09)
 - [x] `PH1-WI04` Active frontier: 6-state machine + hysteresis + residency counters (DONE 2026-09-14: 15 tests green, 100K observe 0.20 s / sweep 0.07 s, ruff clean — see notes entry 11)
 - [x] `PH1-WI05` Materialization/eviction: 3-layer separation; §67 roundtrip exact-pass (DONE 2026-09-14: 10 tests green, 200-net/2000-tick roundtrip bit-exact, 20K cycle 0.08 s, ruff check+format clean — see notes entry 14)
-- [ ] `PH1-WI06` Procedural connectivity: §22 pipeline, keyed RNG; §68 determinism pass
+- [x] `PH1-WI06` Procedural connectivity: §22 pipeline, keyed RNG; §68 determinism pass (DONE 2026-09-14: 11 tests green, 100 calls identical, 640K edges in 3.30 s, ruff check+format clean — see notes entry 15)
 
 ## PH2 — Validation suite (gate: all green on CPU before FlyWire)
 - [ ] `PH2-WI01` §69 virtualization-vs-explicit (exact, static)
