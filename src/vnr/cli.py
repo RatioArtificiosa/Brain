@@ -12,7 +12,6 @@ from vnr import __version__
 from vnr.hardware import derive_budget, discover_hardware, format_bytes
 
 _NOT_YET = {
-    "dataset": "PH4",
     "connectome": "PH4",
     "generate": "PH4",
     "simulate": "PH1",
@@ -54,6 +53,33 @@ def doctor() -> None:
         click.echo(f"NOTE: {note}")
     ready = prof.ram_bytes > 0 and prof.cpu_threads > 0
     click.echo(f"STATUS: {'READY' if ready else 'NOT READY'}")
+
+
+@cli.group()
+def dataset() -> None:
+    """Connectome dataset operations (PH4-WI02b)."""
+
+
+@dataset.command()
+@click.option("--token", default=None, help="FlyWire token (else secure prompt).")
+def auth(token: str | None) -> None:
+    """Store the FlyWire token in the user profile (never in the repo)."""
+    from vnr.connectome.credentials import save_token
+
+    value = token or click.prompt("FlyWire token", hide_input=True)
+    path = save_token(value)
+    click.echo(f"token stored: {path} (source: file)")
+
+
+@dataset.command()
+def status() -> None:
+    """Show dataset credential state (never prints secrets)."""
+    from vnr.connectome.credentials import has_token, token_source
+
+    if has_token():
+        click.echo(f"FlyWire token: configured (source: {token_source()})")
+    else:
+        click.echo("FlyWire token: missing — run `vnr dataset auth`")
 
 
 def _stub(name: str) -> None:
