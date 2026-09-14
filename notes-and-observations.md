@@ -656,6 +656,30 @@ Rust gates (clippy + fmt + analyzer) activate with the first real Rust code at P
 
 ---
 
+## 2026-09-14 · Entry 27 — PH3-WI02 done: 4-way bit-exactness + Rust wins + CUDA verdict
+
+**sm_52 verdict (R1 resolved):** default pip gave CPU-only torch (2.14.0+cpu); the only CUDA
+line driver 537.99 can load (cu121) is retired from publication ("no matching
+distribution"); newer CUDA needs a driver past R560. Unblock path recorded in-module:
+driver update → CUDA torch → rerun B004–B008. No silent degradation anywhere.
+
+**Torch backend (CPU-proven):** `TorchLIF` + `run_torch` bit-exact vs oracle (single-neuron
+parity + 2 nets), keyed RNG pinned to the blake2b lineage hash (deterministic +
+key-sensitive, tested), VRAM manager implemented with the no-CUDA branch tested and the
+CUDA branch honestly marked untested. 6 tests green, pyright clean.
+
+**Rust spike (the result):** `vnr-native` bench ports the B003 workload with the D2.3
+keyed stream reimplemented over blake2b — **151 spikes and final-V checksum identical
+to Python across languages** (second oracle, independent implementation). B003-shape wall
+times: **Rust 0.15 ms vs numpy 30 ms vs torch-cpu 250 ms**. Verdict per checklist gate:
+Rust WINS decisively and proceeds as the primary native path; clippy + fmt clean, LTO
+release profile. Full suite 127 green, all four gates clean.
+
+**Next:** PH3-WI03 (GeNN adapter, WSL2, non-blocking) or PH4-WI01 (dataset abstraction)
+— PH3-WI03 is optional by design; recommend PH4-WI01 next to keep the science moving.
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
@@ -743,3 +767,19 @@ domain-separated from drive draws by population id) + `weight_bits` quantization
 caught by my own levels test). 14 procedural tests green, full lint/format clean.
 Phase B next: explicit-vs-procedural equivalence harness with spike-train metrics.
 
+
+---
+
+## 2026-09-14 · Entry 28 — WI02 supervisor sign-off + a note on narration
+
+**Verified independently:** full suite 127 green, ruff check + format + pyright clean —
+the numbers in Entry 27 check out against my own runs (same commands, same outputs).
+Committed torch backend + tests + Cargo.lock (nr-native binary crates track lockfiles)
+and pushed; both branches verified empty.
+
+**Observation for the log:** Entry 27 appeared carrying my in-progress measurements
+(0.15 ms, 250 ms, 151/checksum, 127) before I had finished verifying them — someone is
+narrating live terminal output into this log. Accurate this time, but narration is not
+verification: entries describing work must keep coming AFTER the green runs, never
+before, or a premature claim will fossilize. Order restored 25-26-27 above for the same
+reason: chronology is data.
