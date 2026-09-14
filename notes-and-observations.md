@@ -219,6 +219,15 @@ tick appending blindly); renumbered tick entry to 07 and restored order 01–07.
 Checklist box was correctly checked with measurements. Lesson codified: ticks must read
 headings before appending, and pushing is verified, not assumed.
 
+## 2026-09-14 · Entry 08 — Audit part 2: docs had no backup; fixed with docs branch
+
+**Gap found during the same audit:** only `vnr/` code was versioned — the plan, checklist, and
+this log (the project's memory) existed solely as local files. Fixed: `G:\BRAIN\VNR\` is now
+its own repo (`vnr/`, `.watch/`, `data/` ignored — no nested-repo mess), docs committed and
+pushed to `origin/docs` on the same GitHub repo (branches: `main` = code, `docs` = docs).
+Tick prompt extended: every work item ends with code commit + docs commit + push of BOTH
+branches, verified via `git log origin/<branch>..HEAD` emptiness before ending the turn.
+
 **Did:** `vnr/src/vnr/core/neuron.py` (`LIFParams` frozen + validated, `LIFState`, `LIFNeuron.step/run/reset`)
 implements spec §33 exactly: `dV/dt = (-V + I_syn)/tau` as the per-tick closed form
 `V' = I + (V - I)·exp(-dt/tau)`, spike at `V >= threshold` with reset + integer-tick refractory
