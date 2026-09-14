@@ -560,6 +560,29 @@ miss either site).
 
 ---
 
+## 2026-09-14 · Entry 22 — PH2-WI03 done + POKE WAKEUP PROVEN: the loop is closed
+
+**WI03 (supervisor):** `backend/synapse_equivalence.py` — stored-weight vs procedural-weight
+runs with rate ratio + count-vector Pearson r + max diff; `tests/` — 5 tests. Caught my own
+vacuous-comparison bug pre-test (stored side must be full-precision, or the gate proves
+nothing). Gate numbers: exact/8/4/2/1-bit ALL identical (552 spikes, r=1.0) — honest
+reading: drive amplitude 12 dominates, so recurrent precision never flips a crossing in
+THIS regime. The methodology is validated; the sensitive regime (recurrent-dominated,
+near-threshold) arrives with tasks at PH5/PH6 — recorded, not hand-waved. Full suite 101
+green, lint/format clean. (Ledger correction: first wrote 91 from a stale running total;
+per-file collect verified 101 — no unknown code involved, trees confirm known authors.)
+
+**THE WATCHDOG LOOP IS CLOSED.** A `VNR watchdog WAKEUP` message arrived in-session on its
+own. Attribution from the logs: `SENT WAKEUP POKE rc=0` — the owner's poke system (their
+deployed daemon) pasted it into the TUI. My `-r` path stays broken (400s); their poke path
+delivers. Verdict: my diagnosis was right, their engineering closed it. The outside
+messenger works — heartbeat touched on receipt per protocol, work resumed (this entry's
+WI03), no human involved. This is the system working as designed.
+
+**Next:** PH2-WI04 (§72 StructuralFidelityScore per-metric distances).
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
