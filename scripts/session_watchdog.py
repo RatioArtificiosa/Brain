@@ -27,6 +27,7 @@ per-iteration faults are logged and skipped.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -176,6 +177,68 @@ def send_message(
         return 99
 
 
+POKE_PS1 = Path(__file__).with_name("tui_poke.ps1")
+
+
+def _proxy_state(timeout_sec: float = 5.0) -> tuple[float, int] | None:
+    """(idle_sec, in_flight) from muse-proxy, else None. Silent fallback to files."""
+    url = os.environ.get("VNR_PROXY_WATCHDOG_URL", "http://127.0.0.1:8120/__watchdog")
+    if not url:
+        return None
+    try:
+        import urllib.request
+
+        with urllib.request.urlopen(url, timeout=timeout_sec) as r:
+            j = json.loads(r.read().decode("utf-8"))
+        return (float(j.get("idle_sec", 0.0)), int(j.get("in_flight", 0)))
+    except (OSError, ValueError, TypeError, KeyError):
+        # URLError/OSError (network), JSONDecodeError/ValueError (bad body),
+        # TypeError/KeyError (bad shape): any of these means "no signal",
+        # never a crash. Narrow by construction; BLE001 stays clean.
+        return None
+
+
+def _poke_enabled() -> bool:
+    return os.environ.get("VNR_WATCH_POKE", "1") not in ("0", "", "false", "no")
+
+
+def _poke_tui(message: str, timeout_sec: float = 60.0) -> int | None:
+    """Paste message+Enter into the worker PowerShell window.
+
+    Returns ps1 rc (0 = poked, 2 = no window), or None when disabled.
+    """
+    if not _poke_enabled():
+        return None
+    last = 3
+    for _ in range(3):
+        try:
+            proc = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(POKE_PS1),
+                    "-TitlePattern",
+                    os.environ.get("VNR_WATCH_TITLE", "grok"),
+                    "-Message",
+                    message,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return 3
+        if proc.returncode == 0:
+            return 0
+        last = proc.returncode
+        time.sleep(2)
+    return last
+
+
 def check_once(
     watch_dir: Path,
     pause_after: float,
@@ -190,6 +253,18 @@ def check_once(
     reason = needs_fire(status, age, pause_after, stalled_after)
     if reason is None:
         return None
+    # Proxy is authoritative: prefer real traffic age, and never fire while a
+    # response stream is open (it's transmitting — leave it alone).
+    proxy = _proxy_state()
+    if proxy is not None:
+        p_idle, p_flying = proxy
+        if p_flying > 0:
+            return None
+        if p_idle < age:
+            age = p_idle
+            reason = needs_fire(status, age, pause_after, stalled_after)
+            if reason is None:
+                return None
     now = time.time()
     while send_history and now - send_history[0] > 3600:
         send_history.popleft()
@@ -207,8 +282,28 @@ def check_once(
     message = build_message(reason, age, status)
     line = f"{reason} heartbeat {age:.0f}s stale (status={status})"
     if dry_run:
-        _log(watch_dir, f"DRY-RUN would send: {line}")
         return line
+    # Primary wake path: paste into the live worker TUI (no competing session).
+    # Falls through to the headless resume below only when poking is disabled
+    # or the worker window isn't found (rc 2).
+    poke_rc = _poke_tui(message)
+    if poke_rc == 0:
+        send_history.append(now)
+        try:
+            with (watch_dir / "sends.log").open("a", encoding="utf-8") as fh:
+                fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {reason} POKE rc=0\n")
+        except OSError:
+            pass
+        _log(watch_dir, f"SENT {reason} POKE rc=0: {line}")
+        return line
+    if poke_rc not in (None, 0, 2):
+        _log(
+            watch_dir,
+            f"POKE-DEFER rc={poke_rc}: worker window exists, retry next episode (no headless run)",
+        )
+        return line
+    if poke_rc == 2:
+        _log(watch_dir, "POKE-SKIP rc=2 (no worker window): falling back to headless")
     code = send_message(session_id, message, err_log=watch_dir / "sends.log")
     send_history.append(now)
     try:
@@ -245,12 +340,28 @@ def run_forever(
     )
     history: deque = deque()
     alarmed = False
+    pause_logged = False
     iteration = 0
     while True:
         try:
-            alarm = check_once(
-                watch_dir, pause_after, stalled_after, history, max_per_hour
-            )
+            if (watch_dir / "watchdog.pause").exists():
+                if not pause_logged:
+                    _log(watch_dir, "paused via watchdog.pause flag: holding fire")
+                    pause_logged = True
+                alarmed = False
+                alarm = None
+            else:
+                if pause_logged:
+                    _log(watch_dir, "pause flag removed: resuming")
+                    pause_logged = False
+                alarm = check_once(
+                    watch_dir,
+                    pause_after,
+                    stalled_after,
+                    history,
+                    max_per_hour,
+                    dry_run=alarmed,  # one send per episode: already fired, just watch
+                )
             if alarm is not None and not alarmed:
                 print(alarm, flush=True)
                 alarmed = True
