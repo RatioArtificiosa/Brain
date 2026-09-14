@@ -636,6 +636,26 @@ magnitude. Full suite 121 green, lint/format clean.
 
 ---
 
+## 2026-09-14 · Entry 26 — Analyzer chain verified end to end, real findings fixed
+
+**Installed (were missing):** pyright 1.1.414 (pip; node-backed) and PSScriptAnalyzer 1.25.0
+(gallery nupkg, manual install — no prompts). Rust chain was already complete
+(rust-analyzer/clippy/rustfmt 1.97.1).
+
+**Proof each one works (not version flags):** pyright over `src/vnr` found 2 REAL bugs in
+my `hardware.py` — unguarded-looking optional `torch` import (targeted ignore + comment)
+and a float-assigned-to-int `format_bytes` loop variable (rewrote with a `size` float;
+behavior preserved, tests green). Fixed, committed `ea53a0c`, pyright now 0/0/0. Rust:
+throwaway crate with an intentional type error — rustc/clippy caught E0308 with exact
+span, `fmt --check` clean, `rust-analyzer analysis-stats` ran full analysis (1.4M
+dependency LOC); crate deleted after. PSScriptAnalyzer over the parallel builder's
+`tui_poke.ps1`: 2 cosmetic warnings (BOM, verb naming) — REPORTED, file untouched (theirs).
+
+**Gate change:** pyright joins ruff check + format as required-clean before any commit.
+Rust gates (clippy + fmt + analyzer) activate with the first real Rust code at PH3-WI02.
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
