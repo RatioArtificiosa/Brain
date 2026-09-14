@@ -838,3 +838,36 @@ token (caveclient comes with it). Re-entry condition: owner provides token → i
 manifest records exact counts. Box stays unchecked until bytes land.
 
 **Next:** PH4-WI03 (MotifCatalog) — needs no credentials; then WI02b auth CLI.
+
+---
+
+## 2026-09-14 · Entry 32 — Token verdict: authentic but unauthorized; dsh healthy; census baselined
+
+**Token (owner-provided, stored via real `vnr dataset auth`, never logged):** file
+`~/.vnr/credentials.json`, `dataset status` confirms without printing secrets.
+Live verification with caveclient 8.2.1: the token AUTHENTICATES but the account
+lacks `view` on the fafb datastack (403 missing_permission). This is account-side
+— FlyWire access approval (or the right datastack for this token) is the owner's
+move. Re-entry: approval granted → rerun the probe → bulk fetch via WI02a cursors.
+(Side effect logged: caveclient install downgraded pandas 3.0.5 → 2.3.3; we pin no
+pandas yet, harmless.)
+
+**dsh server: NOT DOWN.** Proxy :8120 alive and busy (in_flight=1, serving this
+very session); dsh web :3080 LISTENING and answering HTTP 401 in <2 ms — an auth
+wall, not an outage. If the owner's client reads that 401 as "down," the fix is
+client-side credential handling, not a restart. Nothing killed, nothing touched
+(node rule honored — observation only).
+
+**WI03 + WI02b shipped:** GeNN adapter contract (probe + spec translation + tripwire
+test; live build blocked both directions — documented with unblock recipes) and the
+`dataset auth/status` CLI (secrets never surface, env precedence, temp-HOME tests).
+Full suite 145 green, all four gates clean.
+
+**Ledger finally baselined:** per-file census recorded (22 files, sums to 145) —
+running totals from memory are banned; every future audit re-runs this census.
+CLI 2, config 5, cpu_numpy 5, credentials 4, dataset 4, events 8, fidelity 6,
+flywire 7, frontier 15, genn 3, graph_health 9, hardware 4, ids 7, materialize 10,
+neuron 9, procedural 14, reference 4, scaling 4, session_watchdog 7,
+synapse_equivalence 5, torch 6, watchdog 7.
+
+**Next:** PH4-WI03 (MotifCatalog).
