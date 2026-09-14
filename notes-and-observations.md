@@ -964,3 +964,23 @@ hub neighborhoods explode pair loops; do NOT kill it, results go in the next
 entry). Cursor at 1M/20 chunks.
 
 **Next:** pilot census numbers → PH4-WI04 generators → PH5 knee graph.
+
+---
+
+## 2026-09-14 · Entry 37 — PH4-WI04 done: all 8 generators + honest structural lessons
+
+**Built (supervisor):** `generate/` framework (protocol, lineage metadata, seeded
+streams) + all 8 generators + topology-only `CognitiveRole`. 9 tests green, full
+suite 161, all four gates clean.
+
+**Three honest findings, not bugs:** (1) `random.Random` rejects tuple seeds —
+stream keys are strings now. (2) Hash-partitioning a chain/graph shatters every
+edge (modular e_out=4, asserted exactly with the explanation — biological modules
+partition by connectivity, and the test says so). (3) Unused-unpacked lint drove
+two MORE determinism re-runs into the suite — the gate improves coverage by
+accident, twice now.
+
+**Still running:** exact pilot census (30+ min — hub pair-loops dominate; estimate
+revised 10× upward in the next entry with real numbers). Cursor holds at 1M.
+
+**Next:** PH5-WI01 (four-way experiment + RTF) — the knee graph begins.
