@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from session_watchdog import build_message, check_once, needs_fire
+from session_watchdog import _live_peer, build_message, check_once, needs_fire
 
 
 def _watch(tmp_path: Path, status: str | None, beat_age: float | None) -> Path:
@@ -56,3 +56,16 @@ def test_hourly_cap_backs_off(tmp_path):
     watch = _watch(tmp_path, "PAUSED", 120)
     history = deque([time.time()] * 10)  # cap already exhausted
     assert check_once(watch, 30.0, 900.0, history, 10, dry_run=True) is None
+
+
+def test_live_peer_ignores_dead_pid(tmp_path):
+    watch = tmp_path / "watch"
+    watch.mkdir(parents=True, exist_ok=True)
+    (watch / "watchdog.pid").write_text("2147483647", encoding="utf-8")
+    assert _live_peer(watch) is None
+
+
+def test_live_peer_ignores_missing_file(tmp_path):
+    watch = tmp_path / "watch"
+    watch.mkdir(parents=True, exist_ok=True)
+    assert _live_peer(watch) is None

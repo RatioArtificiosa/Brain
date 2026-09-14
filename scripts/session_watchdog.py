@@ -56,6 +56,28 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _live_peer(watch_dir: Path) -> int | None:
+    """PID of another live watchdog, else None. Prevents duplicate daemons
+    (seen 3 concurrent instances on 2026-09-14 from mystery relaunches)."""
+    try:
+        pid = int((watch_dir / "watchdog.pid").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    if pid == os.getpid():
+        return None
+    try:
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return pid if str(pid) in out.stdout else None
+
+
 def _log(watch_dir: Path, message: str) -> None:
     try:
         with (watch_dir / "watchdog.log").open("a", encoding="utf-8") as fh:
@@ -110,8 +132,17 @@ def build_message(reason: str, age_sec: float, status: str) -> str:
     )
 
 
-def send_message(session_id: str, message: str, timeout_sec: float = 300.0) -> int:
-    """Deliver one message into the session via headless grok. Returns exit code."""
+def send_message(
+    session_id: str,
+    message: str,
+    timeout_sec: float = 300.0,
+    err_log: Path | None = None,
+) -> int:
+    """Deliver one message into the session via headless grok. Returns exit code.
+
+    stderr tail is appended to err_log: a silent rc is a mystery, a logged rc
+    is a diagnosis (lesson of the 11:14 rc=1 pair).
+    """
     try:
         proc = subprocess.run(
             ["grok", "-p", message, "-r", session_id],
@@ -119,9 +150,29 @@ def send_message(session_id: str, message: str, timeout_sec: float = 300.0) -> i
             text=True,
             timeout=timeout_sec,
             check=False,
+            cwd="E:\\",
         )
+        if err_log is not None and proc.stderr:
+            try:
+                with err_log.open("a", encoding="utf-8") as fh:
+                    tail = proc.stderr.strip().splitlines()[-5:]
+                    fh.write(
+                        f"{time.strftime('%Y-%m-%dT%H:%M:%S')} rc={proc.returncode}\n"
+                    )
+                    for line in tail:
+                        fh.write(f"  stderr: {line[:300]}\n")
+            except OSError:
+                pass
         return proc.returncode
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        if err_log is not None:
+            try:
+                with err_log.open("a", encoding="utf-8") as fh:
+                    fh.write(
+                        f"{time.strftime('%Y-%m-%dT%H:%M:%S')} EXC {type(exc).__name__}\n"
+                    )
+            except OSError:
+                pass
         return 99
 
 
@@ -158,7 +209,7 @@ def check_once(
     if dry_run:
         _log(watch_dir, f"DRY-RUN would send: {line}")
         return line
-    code = send_message(session_id, message)
+    code = send_message(session_id, message, err_log=watch_dir / "sends.log")
     send_history.append(now)
     try:
         with (watch_dir / "sends.log").open("a", encoding="utf-8") as fh:
@@ -178,6 +229,11 @@ def run_forever(
     max_iterations: int = 0,
 ) -> int:
     watch_dir.mkdir(parents=True, exist_ok=True)
+    older = _live_peer(watch_dir)
+    if older is not None:
+        _log(watch_dir, f"another watchdog (pid={older}) is alive: this one exits")
+        print(f"watchdog already running as pid={older}; exiting", file=sys.stderr)
+        return 0
     try:
         (watch_dir / "watchdog.pid").write_text(str(os.getpid()), encoding="utf-8")
     except OSError:
