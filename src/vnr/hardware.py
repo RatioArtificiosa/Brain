@@ -72,7 +72,7 @@ def _windows_total_ram() -> int:
 
 def _nvidia_smi(fields: str) -> str | None:
     try:
-        out = subprocess.run(  # noqa: S603 — fixed argv, no shell
+        out = subprocess.run(  # fixed argv, no shell; returncode checked below
             ["nvidia-smi", f"--query-gpu={fields}", "--format=csv,noheader"],
             capture_output=True,
             text=True,
