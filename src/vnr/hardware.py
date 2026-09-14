@@ -115,7 +115,7 @@ def discover_hardware() -> HardwareProfile:
                 pass
             prof.driver_version = parts[2]
     try:
-        import torch
+        import torch  # pyright: ignore[reportMissingImports] — optional dep, guarded below
 
         prof.torch_version = torch.__version__
         prof.torch_cuda_available = bool(torch.cuda.is_available())
@@ -153,8 +153,9 @@ def derive_budget(prof: HardwareProfile) -> RuntimeBudget:
 
 
 def format_bytes(n: int) -> str:
+    size = float(n)
     for unit in ("B", "KB", "MB", "GB", "TB"):
-        if n < 1024 or unit == "TB":
-            return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
-        n /= 1024
-    return f"{n} B"
+        if size < 1024 or unit == "TB":
+            return f"{size:.1f} {unit}" if unit != "B" else f"{n} B"
+        size /= 1024
+    return f"{size:.0f} B"
