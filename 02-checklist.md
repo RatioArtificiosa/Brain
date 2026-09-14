@@ -24,7 +24,7 @@
 ## PH3 — Backends
 - [x] `PH3-WI01` NumPy vectorized CPU backend reproduces oracle exactly (DONE 2026-09-14: 5 tests green, bit-exact on 2 nets + single-neuron tick parity, B003 1.98× B001, full suite 121 green — see notes entry 25)
 - [x] `PH3-WI02` PyTorch backend + Rust spike (DONE 2026-09-14, verified twice: torch CPU bit-exact, Rust cross-language bit-exact 0.15ms vs numpy 30ms vs torch-cpu 250ms, CUDA blocked cu121-retired — see notes entries 27/28. Box re-applied: a concurrent edit had clobbered the first flip — see entry 30.)
-- [x] `PH3-WI03` GeNN adapter, WSL2 only, non-blocking (DONE 2026-09-14: probe + spec-translation contract, tripwire test; live build blocked — py3.8 has g++ but no wheels, newer Ubuntu has py3.10 but no compiler/sudo — see notes entry 32)
+- [x] `PH3-WI03` GeNN adapter, WSL2 only (DONE 2026-09-14: password unblocked toolchain → PyGeNN 5.4.0 source-built → WSL runner BIT-EXACT vs oracle; measured semantics documented in-module: ms spike times, +1+axonal delivery, name-keyed build cache, values-copy, double gate — see notes entry 35)
 
 ## PH4 — Connectome + generators
 - [x] `PH4-WI01` `ConnectomeDataset` protocol + toy/synthetic/random impls (DONE 2026-09-14: 4 tests green, protocol + determinism + modularity + density band — see notes entry 29)

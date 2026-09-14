@@ -914,3 +914,29 @@ builder's design; my contributions in that area are diagnosis, tests, lint/forma
 and the stderr-logging + singleton fixes. Standing rule amended: NEVER bare
 directory adds — explicit paths only, and `git status` re-read between add and
 commit when another writer is active.
+
+---
+
+## 2026-09-14 · Entry 35 — GeNN phase 2 LIVE: source build → bit-exact oracle match
+
+**Chain (owner password made every link possible):** no PyPI pygenn (404) and no
+wheels for py3.8 → sudo apt toolchain (g++ 11.4, SWIG 4.0.2, pkg-config,
+libffi-dev — each failure diagnosed from build output, never guessed) → GeNN
+5.4.0 source-built in WSL2 Ubuntu → custom LIF + sparse explicit adjacency +
+per-tick DC drive runner → **spikes AND final voltages bit-identical to the
+oracle** (32-net/300-tick gate green).
+
+**Debugging ledger (each proven, none assumed):** (1) New-syntax models (bare
+identifiers, no `$()`), `load(num_recording_timesteps)`, `vars[].values`
+setter + `push_to_device` (getter returns a COPY). (2) Recording tuple is
+(times_ms, ids) — truncating ms to int faked an 81-vs-8 "timing anomaly" that
+survived three wrong theories before the disambiguation probe killed it.
+(3) float32 integration drifts ~1e-6, so the gate runs double. (4) Stale
+same-named builds masquerade as new failures — precision now in the model
+name. (5) Delivery lands at spike+1+axonal (measured 1/2/3 sweep), so oracle
+delay D needs axonal D-1; `max_dendritic_delay` only sizes buffers. Lesson
+repeated from entry 09: disambiguate through a second channel, and distrust
+unit confusions above all.
+
+**Standing:** third independent oracle (Python, Rust, GeNN) agrees bit-for-bit.
+The adapter module documents all five semantics for the next backend author.
