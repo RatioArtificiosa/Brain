@@ -298,7 +298,7 @@ indicator when another writer is active.
 
 ---
 
-## 2026-09-14 · Entry 11 — PH1-WI04 done: six-state active-frontier oracle
+## 2026-09-14 · Entry 12 — PH1-WI04 done: six-state active-frontier oracle
 
 **Did:** `vnr/src/vnr/core/frontier.py` (`FrontierState` 6-state enum, `FrontierParams`
 frozen + validated, `FrontierEntry`, `ActiveFrontier`) implements plan PH1-WI04 / spec §25:
@@ -375,3 +375,25 @@ lab log until earned). AI image generation failed (account credits exhausted) �
 GitHub renders it). No tick collision; committed `f388fc6`, pushed, verified empty.
 
 **Next:** PH1-WI04 active frontier (ticks own it; supervisor audits).
+
+## 2026-09-14 · Entry 13 — 30s threshold live; orphan pattern confirmed; format gate added
+
+**Threshold change (owner: wake after 30 s):** `DEFAULT_PAUSE_AFTER_SEC` 180 → 30, unit-tested,
+pushed (`1579d5f`), monitor restarted on the new code — the running instance (PID 67488)
+checks every 15 s against the 30 s bar. Trade-off stated: long reasoning gaps between my own
+tool calls can now trip a mid-turn WAKEUP; episode-suppression (one alarm per episode) caps
+the noise, and every alarm re-points at the checklist, so worst case is a harmless nudge.
+
+**Orphan pattern CONFIRMED (second occurrence):** killing a monitor task again left its child
+python alive (old PID 888 survived next to new 67488). Killed by PID; single instance
+verified by process table. This is now a known harness behavior, not a surprise: EVERY
+monitor restart/kill must be followed by a process-table check + `Stop-Process` on strays.
+Added to future audit routine.
+
+**Tick audit (PH1-WI04):** worker's frontier oracle verified real — full suite 57 green after
+my review; code commit `15d94da` + docs `19cc901` both pushed by the worker. Fixed one
+collision: duplicate "Entry 11" (worker's frontier log vs my live-fire log) → worker's
+renumbered to 12, chronological order restored.
+
+**New gate:** `ruff format --check` flagged 6 drifted files — applied `ruff format`
+repo-wide, re-tested green. Format-clean is now part of "done" alongside check-clean.
