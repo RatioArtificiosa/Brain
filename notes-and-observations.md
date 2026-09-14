@@ -620,6 +620,22 @@ ingest (PH4) is unblocked — but PH3 backends come first in build order.
 
 ---
 
+## 2026-09-14 · Entry 25 — PH3-WI01 done: vectorized, bit-exact, 2× faster
+
+**Built (supervisor, on POKE wake):** `backend/cpu_numpy.py` — `NumpyLIF` population
+stepper with oracle-identical per-element semantics + `run_numpy` mirroring
+`run_explicit`; 5 tests green: single-neuron tick-for-tick parity vs `LIFNeuron`
+(200 patterned ticks, V + refractory compared), bit-exact spikes/V/refractory on
+64-net and 256-net, B001/B003 timings, bad-size rejection.
+
+**Numbers:** B003 numpy 1.98× B001 explicit — vectorization alone nearly doubles
+throughput with routing still in Python; kernels (WI02) own the next order of
+magnitude. Full suite 121 green, lint/format clean.
+
+**Next:** PH3-WI02 (PyTorch CUDA backend + Rust native-core spike; sm_52 verify first).
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's

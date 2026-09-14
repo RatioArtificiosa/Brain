@@ -22,7 +22,7 @@
 - [x] `PH2-WI05` §73 graph-health gate (explode/dead/sync/hub/isolate → fail loud) (DONE 2026-09-14: 9 tests green, each mode isolated to its check, gate caught my own silent config — see notes entry 24)
 
 ## PH3 — Backends
-- [ ] `PH3-WI01` NumPy vectorized CPU backend reproduces oracle exactly (B001/B003)
+- [x] `PH3-WI01` NumPy vectorized CPU backend reproduces oracle exactly (DONE 2026-09-14: 5 tests green, bit-exact on 2 nets + single-neuron tick parity, B003 1.98× B001, full suite 121 green — see notes entry 25)
 - [ ] `PH3-WI02` PyTorch CUDA backend: Philox keyed RNG, VRAM manager; **verify sm_52 first** (B002/B004–B008). Rust native-core spike in parallel (PyO3 event kernel; rust-analyzer + clippy clean; must beat torch on events/sec to proceed)
 - [ ] `PH3-WI03` GeNN adapter, WSL2 only, non-blocking
 
