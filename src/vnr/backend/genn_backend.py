@@ -8,11 +8,17 @@ passwordless sudo. No live GeNN model can build here today. Unblock:
 ``pip install pygenn`` — at which point phase 2 (compile + run + exactness
 test vs oracle) activates.
 
-What ships now (complete and tested): the runtime ``available()`` probe
-plus ``build_spec()``, which translates a ``StaticNetSpec`` into the plain
-parameter dict a live GeNN backend consumes (neuron model, synapse
-parameters, schedule). Pure function, fully unit-tested, zero GeNN
-dependency — the compile/run layer plugs into exactly this contract later.
+What ships now (complete and tested): the runtime ``available()`` probe,
+``build_spec()`` (StaticNetSpec → backend parameters, pure and tested), and
+— since PyGeNN 5.4.0 was source-built in WSL2 Ubuntu — the LIVE path:
+``genn_wsl_runner.py`` executes a spec inside WSL and returns spike JSON,
+proven BIT-EXACT vs the oracle (see ``tests/test_genn_live.py``). Measured
+GeNN semantics that differ from naive assumptions (pinned by failing tests
+first): spike times record in MILLISECONDS; delivery lands at
+spike_tick + 1 + axonal steps (so oracle delay D needs axonal D-1, and D=0
+is inexpressible — fail loud); compiled models cache by name (names must
+capture every codegen input, including precision); ``.values`` returns a
+copy (use the setter); float32 integration drifts, so the gate runs double.
 """
 
 from __future__ import annotations
