@@ -583,6 +583,22 @@ WI03), no human involved. This is the system working as designed.
 
 ---
 
+## 2026-09-14 · Entry 23 — PH2-WI04 done: fidelity that can't hide timing shifts
+
+**Built (supervisor, on POKE wake):** `backend/fidelity.py` — `compare_spike_trains`
+reporting rate ratio + count-vector Pearson r + binned-cosine timing similarity +
+worst-neuron diff, with thresholds traveling inside the result and `overall_pass` as
+an AND-gate (never a scalar); 6 tests green.
+
+**The §72 point, demonstrated not asserted:** same-count shifted trains pass rate AND
+count metrics while binned-cosine fires — one collapsed scalar would hide exactly this.
+Plus the money test: explicit-vs-virtualized reference runs pass the full gate, tying
+WI04 back to WI01's bit-exactness proof. Custom thresholds auditable in-result.
+
+**Next:** PH2-WI05 (§73 graph-health gate: explode/dead/sync/hub/isolate → fail loud).
+
+---
+
 ## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
 
 **Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
