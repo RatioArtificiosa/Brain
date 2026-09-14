@@ -533,3 +533,28 @@ and PH3-WI01 (NumPy) will be measured against exactly this gate.
 
 **Next:** PH2-WI02 §70 1M-virtual/50K-budget run without full materialization.
 
+---
+
+## 2026-09-14 · Entry 18 — PH2-WI02 done: 1M virtual under a 50K roof, exact peak
+
+**Built (supervisor, this session):** `backend/scaling.py` — lazy registration (even metadata
+stays proportional to touched neurons), stalest-first budget enforcement every tick,
+keyed assembly drive; `tests/test_scaling.py` — 4 tests.
+
+**Two honest failures on the way, both diagnostic:** (1) salt-and-pepper drive produced a
+fully SILENT run (0 spikes) — single ticks can't climb this integrator; rebuilt as sustained
+assembly blocks with half-carry between blocks (assemblies, not rain). (2) First spiking
+config peaked at 22K with zero evictions — budget path unexercised; hardened drive to
+degree-16 / 1500-hot until pressure was real.
+
+**Gate numbers:** 10,488 spikes, 167,808 events delivered, peak EXACTLY 50,000 (enforcement
+is exact, not approximate), 206,642 materializations / 156,642 evictions. Full suite 86
+green, ruff check + format clean (one auto-fixable applied). Small spec (20K/2K/60t) proves
+bit-determinism across runs; heavy-drive unit proves the cap under overflow pressure.
+
+**Deviation noted:** `target_id % virtual_n` folding stands in for population addressing
+until PH6 (same call as WI01's reference backend — recorded twice so the PH6 upgrade can't
+miss either site).
+
+**Next:** PH2-WI03 (§71 synapse virtualization, statistical equivalence).
+

@@ -16,7 +16,7 @@
 
 ## PH2 — Validation suite (gate: all green on CPU before FlyWire)
 - [x] `PH2-WI01` §69 virtualization-vs-explicit (exact, static) (DONE 2026-09-14: 4 tests green, 512-net/1500-tick spikes+state bit-exact, max_resident 496/512, ruff check+format clean — see notes entry 17)
-- [ ] `PH2-WI02` §70 1M-virtual/50K-budget run without full materialization
+- [x] `PH2-WI02` §70 1M-virtual/50K-budget run without full materialization (DONE 2026-09-14: 4 tests green, 10,488 spikes / 167,808 events / peak exactly 50,000 / 156,642 evictions, full suite 86 green — see notes entry 17)
 - [ ] `PH2-WI03` §71 synapse virtualization, statistical equivalence
 - [ ] `PH2-WI04` §72 `StructuralFidelityScore` per-metric distances
 - [ ] `PH2-WI05` §73 graph-health gate (explode/dead/sync/hub/isolate → fail loud)
