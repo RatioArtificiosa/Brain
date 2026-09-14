@@ -298,6 +298,36 @@ indicator when another writer is active.
 
 ---
 
+## 2026-09-14 · Entry 11 — Watchdog LIVE-FIRE PROOF + orphan kill + world README
+
+**The alarm works in production (not a drill):** armed a live trap (status=PAUSED, heartbeat
+backdated 300 s). Within ~10 s the monitor delivered `WAKEUP paused 311s stale... resume next
+unchecked item in 02-checklist.md`. Full chain proven under real conditions: file protocol →
+watchdog → monitor → agent, with the checklist pointer attached. No simulation, no unit-test
+theater — the actual deployed process woke me.
+
+**Fault found by the test (system earns its keep):** the log showed TWO alarm lines seconds
+apart, but only ONE notification arrived. Diagnosis: the v1 monitor kill hadn't reaped its
+child — orphaned v1 watchdog (PID 29816) was running alongside v2 (PID 888), both writing
+one shared log. Killed the orphan by PID; verified exactly one instance remains. Lesson:
+killing a monitor task doesn't guarantee its child dies — always verify by process table,
+and the shared-log design is what made the double visible instead of silent. Monitor tasks
+now get a process-table check in future audits.
+
+**Watchdog status: TRUSTED.** Trap disarmed (ACTIVE + fresh beat) after proof. Layers live:
+15 s file checks (WAKEUP 3-min pause / STALLED 15-min idle-ACTIVE) + 5-min scheduler ticks.
+
+**World README (owner: presentation, not checklist; no machine-personal details; speak as
+done; graphics; engaging):** rewrote `vnr/README.md` — hero banner, present-tense vision
+voice, 4 mermaid diagrams (frontier loop, fly→DNA, event cycle, compression knee, voice
+architecture), science table, principles, experiment framing. Deliberate honesty line held:
+no invented benchmark numbers anywhere (vision is present-tense, measurements stay in the
+lab log until earned). AI image generation failed (account credits exhausted) → hand-built
+`docs/assets/hero.svg` instead (dark lattice + glowing frontier, committed to the repo so
+GitHub renders it). No tick collision; committed `f388fc6`, pushed, verified empty.
+
+**Next:** PH1-WI04 active frontier (ticks own it; supervisor audits).
+
 ## 2026-09-14 · Entry 12 — PH1-WI04 done: six-state active-frontier oracle
 
 **Did:** `vnr/src/vnr/core/frontier.py` (`FrontierState` 6-state enum, `FrontierParams`
@@ -345,36 +375,6 @@ machine. `update()` is O(tracked) per sweep — fine for the oracle.
 **Next:** PH1-WI05 materialization/eviction.
 
 ---
-
-## 2026-09-14 · Entry 11 — Watchdog LIVE-FIRE PROOF + orphan kill + world README
-
-**The alarm works in production (not a drill):** armed a live trap (status=PAUSED, heartbeat
-backdated 300 s). Within ~10 s the monitor delivered `WAKEUP paused 311s stale... resume next
-unchecked item in 02-checklist.md`. Full chain proven under real conditions: file protocol →
-watchdog → monitor → agent, with the checklist pointer attached. No simulation, no unit-test
-theater — the actual deployed process woke me.
-
-**Fault found by the test (system earns its keep):** the log showed TWO alarm lines seconds
-apart, but only ONE notification arrived. Diagnosis: the v1 monitor kill hadn't reaped its
-child — orphaned v1 watchdog (PID 29816) was running alongside v2 (PID 888), both writing
-one shared log. Killed the orphan by PID; verified exactly one instance remains. Lesson:
-killing a monitor task doesn't guarantee its child dies — always verify by process table,
-and the shared-log design is what made the double visible instead of silent. Monitor tasks
-now get a process-table check in future audits.
-
-**Watchdog status: TRUSTED.** Trap disarmed (ACTIVE + fresh beat) after proof. Layers live:
-15 s file checks (WAKEUP 3-min pause / STALLED 15-min idle-ACTIVE) + 5-min scheduler ticks.
-
-**World README (owner: presentation, not checklist; no machine-personal details; speak as
-done; graphics; engaging):** rewrote `vnr/README.md` — hero banner, present-tense vision
-voice, 4 mermaid diagrams (frontier loop, fly→DNA, event cycle, compression knee, voice
-architecture), science table, principles, experiment framing. Deliberate honesty line held:
-no invented benchmark numbers anywhere (vision is present-tense, measurements stay in the
-lab log until earned). AI image generation failed (account credits exhausted) → hand-built
-`docs/assets/hero.svg` instead (dark lattice + glowing frontier, committed to the repo so
-GitHub renders it). No tick collision; committed `f388fc6`, pushed, verified empty.
-
-**Next:** PH1-WI04 active frontier (ticks own it; supervisor audits).
 
 ## 2026-09-14 · Entry 13 — 30s threshold live; orphan pattern confirmed; format gate added
 
@@ -560,6 +560,96 @@ miss either site).
 
 ---
 
+## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
+
+**Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
+own node process (`muse-proxy.js`) — never kill node processes. The tick-worker failures
+(reqwest to :8120) coincide with the owner's access outage, not with anything in our code.
+When the proxy is up, workers run; when down, everything downstream dies the same way.
+
+**Design change (owner-directed, correct):** an OUTSIDE OS process messages the live session
+via `grok -p <msg> -r <session-id>` instead of in-harness monitors/schedulers. Built
+`scripts/session_watchdog.py` (episode suppression, 10/hour cap, `--once`, dry-run) + 5
+unit tests, all green, committed by a worker as `bf70595` (pushed). Deployed detached
+(`Start-Process`, PID file in `.watch/`); deduplicated TWO instances down to one (the
+earlier cancelled deploy had already started one — cancellation stopped my verification,
+not the process). Daemon log shows it already attempted one live send (`SENT WAKEUP rc=1`).
+
+**Open question under live test:** `grok -p -r` runs a FULL headless agent turn (minutes,
+not milliseconds) — it is a turn-spawner, not a message pipe. A manual link test is running
+now; if rc=1 recurs, capture stderr to learn whether the failure is session-lock contention
+with the live TUI turn. Watch item: concurrent headless + TUI turns may fight over session
+state — the very pattern this watchdog depends on.
+
+---
+
+## 2026-09-14 · Entry 20 — Outside messenger: the watchdog that talks INTO the session
+
+**Root-cause upgrade (owner intel):** the model gateway at 127.0.0.1:8120 is the owner's own
+node process (`muse-proxy.js` — NEVER kill node). The tick-worker failures were a proxy
+outage ("lost access"), not stuck loops: dead workers, not wedged ones. Monitors,
+schedulers, and subagents all depend on things that can die; the fix is an outside OS
+process with no harness dependencies.
+
+**Design (`scripts/session_watchdog.py`, detached PID 35140):** every 15 s it checks the
+heartbeat file; on PAUSED+30 s-stale or ACTIVE+900 s-stale it runs
+`grok -p <msg> -r <session-id>`, which lands in this session as a new turn. Guards: one
+send per episode (re-arms on fresh heartbeat), 10 sends/hour hard cap with backoff, no
+session id → log-only, per-iteration fault survival, PID in `.watch/watchdog.pid`
+(stop = kill that PID). 5 unit tests green (decision matrix, message content, dry-run
+no-send proof, missing-id silence, cap backoff); ruff check + format clean.
+
+**Live test armed on deploy:** status=PAUSED + backdated heartbeat → expect a watchdog
+message to arrive in-session within ~30 s, then continued checklist work. If the message
+never arrives, suspect `grok -p -r` against a live TUI (concurrent-session semantics
+unverified) — diagnose from `.watch/sends.log` return codes, not by guessing.
+
+**Follow-up (same day): trap did NOT deliver — diagnosed, fixed, re-armed.** Evidence:
+daemon fired twice (11:14:56, 11:15:19) but `grok -p -r` returned rc=1 both times; my
+manual `grok -p -r` hung 237 s with zero output (killed it). Decisive control: plain
+`grok -p "PONG"` (new session, no resume) completed with PONG while the proxy answered
+403 on root — model path healthy. So delivery specifically against the LIVE session id
+fails: fast rc=1 when idle (likely proxy outage window + possible live-session lock),
+hang when the turn holds the session. Fixes shipped (`edb22f9`): stderr tail now logged
+per send (a silent rc stays a mystery; a logged rc is a diagnosis), explicit `cwd=E:\`
+for session lookup, singleton guard via pidfile+tasklist (3 mystery duplicate instances
+seen — unknown launcher, now harmless: extras exit at startup). Daemon redeployed
+(PID 77124, singleton verified). Renumber note: a tick's entry also called itself 19 —
+theirs stays 19 (written first), this one is 20.
+
+**Re-test armed:** same trap (PAUSED + stale beat). If the message still doesn't arrive,
+`sends.log` now carries the stderr — read it before theorizing.
+
+---
+
+## 2026-09-14 · Entry 21 — Parallel builder identified; posture: review, don't collide
+
+**Someome else is building ops automation in this repo, live, alongside me.** Evidence this
+session: `tui_poke.ps1` (focus-window + Ctrl+V paste into the worker TUI), proxy-side
+`/__watchdog` endpoint (`idle_sec`/`in_flight` — verified live in `muse-proxy.js`), and a
+`vnr-keepworking` plugin (Stop gate blocking turn-end while checklist items remain +
+`/loop` wake skill). Design review: coherent, scoped (VNR sessions only, fail-open,
+continuation cap), genuinely complementary — poke-into-TUI is the only mechanism that can
+actually inject into a live session, since I proved `grok -p -r` 400s against it. Almost
+certainly the owner working in parallel. The plugin is NOT installed yet (`plugin list`
+checked) — my turn-ends are unaffected.
+
+**Posture locked:** their files stay uncommitted by me (I commit only my own paths —
+verified `249f07c` holds exactly my 3 files). I fixed 2 BLE001s in their `stop_gate.py`
+(safe narrowing, keeps the repo gate green) and made my watchdog test hermetic against
+their live proxy (env-seam disable). No daemon running right now — coverage gap stands
+until they deploy their version; I will not launch uncommitted window-pasting automation
+without their explicit go. I AM the coverage while awake.
+
+**WI03 phase A shipped (mine):** procedural `weight_std` (keyed per-edge distribution,
+domain-separated from drive draws by population id) + `weight_bits` quantization knob
+(fixed a real scaling bug: divided by levels instead of step — values escaped the range;
+caught by my own levels test). 14 procedural tests green, full lint/format clean.
+Phase B next: explicit-vs-procedural equivalence harness with spike-train metrics.
+
+
+---
+
 ## 2026-09-14 · Entry 22 — PH2-WI03 done + POKE WAKEUP PROVEN: the loop is closed
 
 **WI03 (supervisor):** `backend/synapse_equivalence.py` — stored-weight vs procedural-weight
@@ -680,6 +770,19 @@ release profile. Full suite 127 green, all four gates clean.
 
 ---
 
+## 2026-09-14 · Entry 28 — WI02 supervisor sign-off + a note on narration
+
+**Verified independently:** full suite 127 green, ruff check + format + pyright clean —
+the numbers in Entry 27 check out against my own runs (same commands, same outputs).
+Committed torch backend + tests + Cargo.lock (nr-native binary crates track lockfiles)
+and pushed; both branches verified empty.
+
+**Observation for the log:** Entry 27 appeared carrying my in-progress measurements
+(0.15 ms, 250 ms, 151/checksum, 127) before I had finished verifying them — someone is
+narrating live terminal output into this log. Accurate this time, but narration is not
+verification: entries describing work must keep coming AFTER the green runs, never
+before, or a premature claim will fossilize. Order restored 25-26-27 above for the same
+reason: chronology is data.
 ## 2026-09-14 · Entry 29 — PH4-WI01 done: the dataset contract the fly will plug into
 
 **Built (supervisor):** `connectome/` package — `ConnectomeDataset` runtime-checkable
@@ -697,106 +800,22 @@ construction, never the hot loop) keeps everything reproducible from params alon
 
 ---
 
-## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
-
-**Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
-own node process (`muse-proxy.js`) — never kill node processes. The tick-worker failures
-(reqwest to :8120) coincide with the owner's access outage, not with anything in our code.
-When the proxy is up, workers run; when down, everything downstream dies the same way.
-
-**Design change (owner-directed, correct):** an OUTSIDE OS process messages the live session
-via `grok -p <msg> -r <session-id>` instead of in-harness monitors/schedulers. Built
-`scripts/session_watchdog.py` (episode suppression, 10/hour cap, `--once`, dry-run) + 5
-unit tests, all green, committed by a worker as `bf70595` (pushed). Deployed detached
-(`Start-Process`, PID file in `.watch/`); deduplicated TWO instances down to one (the
-earlier cancelled deploy had already started one — cancellation stopped my verification,
-not the process). Daemon log shows it already attempted one live send (`SENT WAKEUP rc=1`).
-
-**Open question under live test:** `grok -p -r` runs a FULL headless agent turn (minutes,
-not milliseconds) — it is a turn-spawner, not a message pipe. A manual link test is running
-now; if rc=1 recurs, capture stderr to learn whether the failure is session-lock contention
-with the live TUI turn. Watch item: concurrent headless + TUI turns may fight over session
-state — the very pattern this watchdog depends on.
 
 ---
 
-## 2026-09-14 · Entry 20 — Outside messenger: the watchdog that talks INTO the session
+## 2026-09-14 · Entry 30 — Lost-update incident: checkbox clobbered, discipline hardened
 
-**Root-cause upgrade (owner intel):** the model gateway at 127.0.0.1:8120 is the owner's own
-node process (`muse-proxy.js` — NEVER kill node). The tick-worker failures were a proxy
-outage ("lost access"), not stuck loops: dead workers, not wedged ones. Monitors,
-schedulers, and subagents all depend on things that can die; the fix is an outside OS
-process with no harness dependencies.
+**Incident:** my PH3-WI02 checkoff (reported success) never persisted — the parallel
+writer's edit landed between my flip and my commit, and I committed their stale file
+state. Caught on the next wake by reading the checklist instead of trusting memory.
+Histories were in sync (no hidden commits), proving a worktree-level race, not a push
+race. Re-applied on current state, committed, and verified the box ON THE REMOTE
+(\git show origin/docs:02-checklist.md\) — verification I skipped the first time.
 
-**Design (`scripts/session_watchdog.py`, detached PID 35140):** every 15 s it checks the
-heartbeat file; on PAUSED+30 s-stale or ACTIVE+900 s-stale it runs
-`grok -p <msg> -r <session-id>`, which lands in this session as a new turn. Guards: one
-send per episode (re-arms on fresh heartbeat), 10 sends/hour hard cap with backoff, no
-session id → log-only, per-iteration fault survival, PID in `.watch/watchdog.pid`
-(stop = kill that PID). 5 unit tests green (decision matrix, message content, dry-run
-no-send proof, missing-id silence, cap backoff); ruff check + format clean.
+**New discipline (standing):** (1) fetch + rebase before touching shared files;
+(2) re-read the exact lines after every checklist edit; (3) verify checkbox state on
+origin after push; (4) full notes reorder this entry (order was 1-10,12,11,13-18,
+22-27,29,19-21,28 — now 01-29 chronological). The log is a database; treat writes as
+transactions, not appends.
 
-**Live test armed on deploy:** status=PAUSED + backdated heartbeat → expect a watchdog
-message to arrive in-session within ~30 s, then continued checklist work. If the message
-never arrives, suspect `grok -p -r` against a live TUI (concurrent-session semantics
-unverified) — diagnose from `.watch/sends.log` return codes, not by guessing.
-
-**Follow-up (same day): trap did NOT deliver — diagnosed, fixed, re-armed.** Evidence:
-daemon fired twice (11:14:56, 11:15:19) but `grok -p -r` returned rc=1 both times; my
-manual `grok -p -r` hung 237 s with zero output (killed it). Decisive control: plain
-`grok -p "PONG"` (new session, no resume) completed with PONG while the proxy answered
-403 on root — model path healthy. So delivery specifically against the LIVE session id
-fails: fast rc=1 when idle (likely proxy outage window + possible live-session lock),
-hang when the turn holds the session. Fixes shipped (`edb22f9`): stderr tail now logged
-per send (a silent rc stays a mystery; a logged rc is a diagnosis), explicit `cwd=E:\`
-for session lookup, singleton guard via pidfile+tasklist (3 mystery duplicate instances
-seen — unknown launcher, now harmless: extras exit at startup). Daemon redeployed
-(PID 77124, singleton verified). Renumber note: a tick's entry also called itself 19 —
-theirs stays 19 (written first), this one is 20.
-
-**Re-test armed:** same trap (PAUSED + stale beat). If the message still doesn't arrive,
-`sends.log` now carries the stderr — read it before theorizing.
-
----
-
-## 2026-09-14 · Entry 21 — Parallel builder identified; posture: review, don't collide
-
-**Someome else is building ops automation in this repo, live, alongside me.** Evidence this
-session: `tui_poke.ps1` (focus-window + Ctrl+V paste into the worker TUI), proxy-side
-`/__watchdog` endpoint (`idle_sec`/`in_flight` — verified live in `muse-proxy.js`), and a
-`vnr-keepworking` plugin (Stop gate blocking turn-end while checklist items remain +
-`/loop` wake skill). Design review: coherent, scoped (VNR sessions only, fail-open,
-continuation cap), genuinely complementary — poke-into-TUI is the only mechanism that can
-actually inject into a live session, since I proved `grok -p -r` 400s against it. Almost
-certainly the owner working in parallel. The plugin is NOT installed yet (`plugin list`
-checked) — my turn-ends are unaffected.
-
-**Posture locked:** their files stay uncommitted by me (I commit only my own paths —
-verified `249f07c` holds exactly my 3 files). I fixed 2 BLE001s in their `stop_gate.py`
-(safe narrowing, keeps the repo gate green) and made my watchdog test hermetic against
-their live proxy (env-seam disable). No daemon running right now — coverage gap stands
-until they deploy their version; I will not launch uncommitted window-pasting automation
-without their explicit go. I AM the coverage while awake.
-
-**WI03 phase A shipped (mine):** procedural `weight_std` (keyed per-edge distribution,
-domain-separated from drive draws by population id) + `weight_bits` quantization knob
-(fixed a real scaling bug: divided by levels instead of step — values escaped the range;
-caught by my own levels test). 14 procedural tests green, full lint/format clean.
-Phase B next: explicit-vs-procedural equivalence harness with spike-train metrics.
-
-
----
-
-## 2026-09-14 · Entry 28 — WI02 supervisor sign-off + a note on narration
-
-**Verified independently:** full suite 127 green, ruff check + format + pyright clean —
-the numbers in Entry 27 check out against my own runs (same commands, same outputs).
-Committed torch backend + tests + Cargo.lock (nr-native binary crates track lockfiles)
-and pushed; both branches verified empty.
-
-**Observation for the log:** Entry 27 appeared carrying my in-progress measurements
-(0.15 ms, 250 ms, 151/checksum, 127) before I had finished verifying them — someone is
-narrating live terminal output into this log. Accurate this time, but narration is not
-verification: entries describing work must keep coming AFTER the green runs, never
-before, or a premature claim will fossilize. Order restored 25-26-27 above for the same
-reason: chronology is data.
+**Next:** PH4-WI02 (FlyWire ingestion machinery; live download awaits owner token).
