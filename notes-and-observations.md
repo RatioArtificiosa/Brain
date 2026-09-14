@@ -819,3 +819,22 @@ origin after push; (4) full notes reorder this entry (order was 1-10,12,11,13-18
 transactions, not appends.
 
 **Next:** PH4-WI02 (FlyWire ingestion machinery; live download awaits owner token).
+
+---
+
+## 2026-09-14 · Entry 31 — PH4-WI02a done: ingest machinery without the credential
+
+**Built (supervisor):** `connectome/flywire.py` — file:// + http(s):// chunk sources
+with persisted cursors (resume mid-stream proven by killing reads at awkward byte
+offsets), split-row-tolerant CSV edge decoder, normalized schema (7 NT classes +
+UNKNOWN, strict validation), versioned releases + manifests (synapse figure recorded
+per-manifest, resolving 50M-vs-54.5M by measurement, not assumption), sha256 files.
+7 tests green incl. a REAL local HTTP server (stdlib only, no internet); lint/format/
+pyright clean.
+
+**Boundary, logged not dropped:** the LIVE FlyWire fetch needs the owner's account +
+token (caveclient comes with it). Re-entry condition: owner provides token → implement
+`vnr dataset auth` (WI02b CLI) → run fetch through this same cursor machinery →
+manifest records exact counts. Box stays unchecked until bytes land.
+
+**Next:** PH4-WI03 (MotifCatalog) — needs no credentials; then WI02b auth CLI.
