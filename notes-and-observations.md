@@ -297,3 +297,35 @@ re-check `git log` in BOTH repos, not just the checklist file. Checklist is a la
 indicator when another writer is active.
 
 **Next:** PH1-WI04 active frontier.
+
+---
+
+## 2026-09-14 · Entry 11 — Watchdog LIVE-FIRE PROOF + orphan kill + world README
+
+**The alarm works in production (not a drill):** armed a live trap (status=PAUSED, heartbeat
+backdated 300 s). Within ~10 s the monitor delivered `WAKEUP paused 311s stale... resume next
+unchecked item in 02-checklist.md`. Full chain proven under real conditions: file protocol →
+watchdog → monitor → agent, with the checklist pointer attached. No simulation, no unit-test
+theater — the actual deployed process woke me.
+
+**Fault found by the test (system earns its keep):** the log showed TWO alarm lines seconds
+apart, but only ONE notification arrived. Diagnosis: the v1 monitor kill hadn't reaped its
+child — orphaned v1 watchdog (PID 29816) was running alongside v2 (PID 888), both writing
+one shared log. Killed the orphan by PID; verified exactly one instance remains. Lesson:
+killing a monitor task doesn't guarantee its child dies — always verify by process table,
+and the shared-log design is what made the double visible instead of silent. Monitor tasks
+now get a process-table check in future audits.
+
+**Watchdog status: TRUSTED.** Trap disarmed (ACTIVE + fresh beat) after proof. Layers live:
+15 s file checks (WAKEUP 3-min pause / STALLED 15-min idle-ACTIVE) + 5-min scheduler ticks.
+
+**World README (owner: presentation, not checklist; no machine-personal details; speak as
+done; graphics; engaging):** rewrote `vnr/README.md` — hero banner, present-tense vision
+voice, 4 mermaid diagrams (frontier loop, fly→DNA, event cycle, compression knee, voice
+architecture), science table, principles, experiment framing. Deliberate honesty line held:
+no invented benchmark numbers anywhere (vision is present-tense, measurements stay in the
+lab log until earned). AI image generation failed (account credits exhausted) → hand-built
+`docs/assets/hero.svg` instead (dark lattice + glowing frontier, committed to the repo so
+GitHub renders it). No tick collision; committed `f388fc6`, pushed, verified empty.
+
+**Next:** PH1-WI04 active frontier (ticks own it; supervisor audits).
