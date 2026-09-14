@@ -397,3 +397,42 @@ renumbered to 12, chronological order restored.
 
 **New gate:** `ruff format --check` flagged 6 drifted files — applied `ruff format`
 repo-wide, re-tested green. Format-clean is now part of "done" alongside check-clean.
+
+---
+
+## 2026-09-14 · Entry 14 — PH1-WI05 done: materialization/eviction oracle, §67 exact
+
+**Did:** `vnr/src/vnr/core/materialize.py` (`Materializer`, `NeuronRuntimeState`,
+`TransientSnapshot`) implements plan PH1-WI05 / spec §26 with D2.6 three-layer separation
+from day one: structural = frozen `LIFParams` per neuron fixed at `register`; learned =
+persistent `dict[str, float]` per neuron (empty for static nets, but the layer and write
+path exist now); transient = evictable `LIFNeuron` resident state. `materialize_neuron`
+(plan §7 contract) builds transient from structural + eviction snapshot; `evict_neuron`
+persists learned FIRST, snapshots transient, frees resident. No silent auto-materialization:
+`step_neuron`/`evict_neuron` on non-resident and `materialize_neuron` on unregistered fail
+loud (KeyError); duplicate `register` → ValueError. All snapshots are frozen copies —
+`learned_of` returns a copy, `NeuronRuntimeState` is frozen — so nothing transient can
+silently carry learned information across any boundary.
+
+**§67 roundtrip (the acceptance):** 200-neuron static net, 2000 ticks seeded drive, full
+eviction sweep at tick 1000 + rematerialize → spike trains identical AND final `(v,
+refractory_until_tick)` bit-exact (`==`, not approx: same op order, exact float restore).
+Plus 6 evict-cycle repetitions staying exact and learned values surviving double eviction.
+
+**Measurements:** full suite 67 passed in ~30 s (dominated by the 1M-ID collision test),
+`ruff check` + `format --check` clean on both new files, 20K materialize+evict cycles
+0.08 s (~500K/s) — oracle overhead is negligible; backends own production scale.
+
+**What I got wrong:** (1) collection SyntaxError from a mistyped return annotation
+(`]`/`)` swap) — caught before any test ran, fixed. (2) Two sloppy first-draft assertions
+(a tautological `or` in the alias test, a vacuous `pytest.approx(x and x)` in the roundtrip
+tail) — rewrote both to assert the real invariant before running. (3) Clunky hand-rolled
+finite-check replaced with `math.isfinite` per `events.py` convention. Lesson repeated from
+entry 02: re-read the diff before pytest — both assertion bugs were visible on reading.
+
+**Limitations:** learned layer is an opaque key-value store — its *effect* on dynamics
+(bias/adaptation application) arrives with plasticity at PH5-WI03; the write path and
+learned-first ordering (asserted via the `writes` journal) are what's proven here.
+`evict_neuron` is single-ID; batch sweeps loop in sorted order at the call site.
+
+**Next:** PH1-WI06 procedural connectivity.
