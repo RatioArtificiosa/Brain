@@ -1,0 +1,7 @@
+vnr/
+.watch/
+data/
+artifacts/
+tmp/
+__pycache__/
+
