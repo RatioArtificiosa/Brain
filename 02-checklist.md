@@ -9,7 +9,7 @@
 ## PH1 — Deterministic core (§6)
 - [x] `PH1-WI01` Virtual uint64 IDs: blake2b-8 lineage hash, collision + avalanche tests (DONE 2026-09-14: 0 collisions/1M, 629K/s — see notes entry 04 for target revision)
 - [x] `PH1-WI02` LIF neuron: §33 dynamics, int ticks, closed-form unit tests (DONE 2026-09-14: 9 tests green, ruff clean)
-- [ ] `PH1-WI03` Event engine: `NeuralEvent`, int-tick priority queue, 100K ordering test
+- [x] `PH1-WI03` Event engine: `NeuralEvent`, int-tick priority queue, 100K ordering test (DONE 2026-09-14: 8 tests green, 100K push 1.21 s / drain 0.17 s, ruff clean — see notes entry 09)
 - [ ] `PH1-WI04` Active frontier: 6-state machine + hysteresis + residency counters
 - [ ] `PH1-WI05` Materialization/eviction: 3-layer separation; §67 roundtrip exact-pass
 - [ ] `PH1-WI06` Procedural connectivity: §22 pipeline, keyed RNG; §68 determinism pass

@@ -228,6 +228,28 @@ pushed to `origin/docs` on the same GitHub repo (branches: `main` = code, `docs`
 Tick prompt extended: every work item ends with code commit + docs commit + push of BOTH
 branches, verified via `git log origin/<branch>..HEAD` emptiness before ending the turn.
 
+## 2026-09-14 · Entry 09 — WI03 adopted from a tick, verified, design-reviewed, shipped
+
+**What happened:** a tick implemented PH1-WI03 (`core/events.py` + `test_events.py`) but ended
+with the files uncommitted, unchecked, unlogged. I adopted the work instead of redoing it.
+
+**Verification (mine):** 8 tests green; 100K-event ordering+FIFO passes (push 1.21 s, drain
+0.17 s — heapq does ~80K pushes/s, ample for the reference oracle); ruff clean. One false
+alarm of my own: two parallel reads displayed the files' contents swapped and I briefly
+concluded the tick had crossed the filenames — re-checked via an independent channel
+(`Get-Content` heads) and confirmed files are correct. Lesson: parallel read results can
+mislead; verify anomalies through a second channel before acting.
+
+**Design review:** (1) The tick used explicit `target_id` where spec §24 sketches
+`target_population` — ENDORSED as correct sequencing (explicit delivery first; population
+addressing arrives with the population model at PH6). Logged so PH6 doesn't inherit an
+assumption silently. (2) `drain_all` via `sorted`+`clear` is O(n log n) — fine for the
+oracle; backends will own performance. (3) Validation is thorough (bool exclusion, uint64
+bounds, finite weights, tick monotonicity by construction). Committed, checked off above,
+pushed to `main`; docs pushed to `docs`.
+
+**Next:** PH1-WI04 active frontier.
+
 **Did:** `vnr/src/vnr/core/neuron.py` (`LIFParams` frozen + validated, `LIFState`, `LIFNeuron.step/run/reset`)
 implements spec §33 exactly: `dV/dt = (-V + I_syn)/tau` as the per-tick closed form
 `V' = I + (V - I)·exp(-dt/tau)`, spike at `V >= threshold` with reset + integer-tick refractory
