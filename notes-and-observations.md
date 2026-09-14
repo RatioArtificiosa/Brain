@@ -560,7 +560,30 @@ miss either site).
 
 ---
 
-## 2026-09-14 · Entry 19 — Outside messenger: the watchdog that talks INTO the session
+## 2026-09-14 · Entry 19 — Outside messenger via grok headless; proxy revelation
+
+**Owner intel that reframes everything:** the model gateway (127.0.0.1:8120) is the owner's
+own node process (`muse-proxy.js`) — never kill node processes. The tick-worker failures
+(reqwest to :8120) coincide with the owner's access outage, not with anything in our code.
+When the proxy is up, workers run; when down, everything downstream dies the same way.
+
+**Design change (owner-directed, correct):** an OUTSIDE OS process messages the live session
+via `grok -p <msg> -r <session-id>` instead of in-harness monitors/schedulers. Built
+`scripts/session_watchdog.py` (episode suppression, 10/hour cap, `--once`, dry-run) + 5
+unit tests, all green, committed by a worker as `bf70595` (pushed). Deployed detached
+(`Start-Process`, PID file in `.watch/`); deduplicated TWO instances down to one (the
+earlier cancelled deploy had already started one — cancellation stopped my verification,
+not the process). Daemon log shows it already attempted one live send (`SENT WAKEUP rc=1`).
+
+**Open question under live test:** `grok -p -r` runs a FULL headless agent turn (minutes,
+not milliseconds) — it is a turn-spawner, not a message pipe. A manual link test is running
+now; if rc=1 recurs, capture stderr to learn whether the failure is session-lock contention
+with the live TUI turn. Watch item: concurrent headless + TUI turns may fight over session
+state — the very pattern this watchdog depends on.
+
+---
+
+## 2026-09-14 · Entry 20 — Outside messenger: the watchdog that talks INTO the session
 
 **Root-cause upgrade (owner intel):** the model gateway at 127.0.0.1:8120 is the owner's own
 node process (`muse-proxy.js` — NEVER kill node). The tick-worker failures were a proxy
@@ -580,4 +603,20 @@ no-send proof, missing-id silence, cap backoff); ruff check + format clean.
 message to arrive in-session within ~30 s, then continued checklist work. If the message
 never arrives, suspect `grok -p -r` against a live TUI (concurrent-session semantics
 unverified) — diagnose from `.watch/sends.log` return codes, not by guessing.
+
+**Follow-up (same day): trap did NOT deliver — diagnosed, fixed, re-armed.** Evidence:
+daemon fired twice (11:14:56, 11:15:19) but `grok -p -r` returned rc=1 both times; my
+manual `grok -p -r` hung 237 s with zero output (killed it). Decisive control: plain
+`grok -p "PONG"` (new session, no resume) completed with PONG while the proxy answered
+403 on root — model path healthy. So delivery specifically against the LIVE session id
+fails: fast rc=1 when idle (likely proxy outage window + possible live-session lock),
+hang when the turn holds the session. Fixes shipped (`edb22f9`): stderr tail now logged
+per send (a silent rc stays a mystery; a logged rc is a diagnosis), explicit `cwd=E:\`
+for session lookup, singleton guard via pidfile+tasklist (3 mystery duplicate instances
+seen — unknown launcher, now harmless: extras exit at startup). Daemon redeployed
+(PID 77124, singleton verified). Renumber note: a tick's entry also called itself 19 —
+theirs stays 19 (written first), this one is 20.
+
+**Re-test armed:** same trap (PAUSED + stale beat). If the message still doesn't arrive,
+`sends.log` now carries the stderr — read it before theorizing.
 
