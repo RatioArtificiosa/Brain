@@ -496,3 +496,40 @@ them. Stress-verified 3× green + lint clean.
 are untracked on disk — a tick is mid-flight on WI06 right now. Deliberately untouched;
 WI06 ships on the worker's rotation, audit on arrival.
 
+---
+
+## 2026-09-14 · Entry 17 — PH2-WI01 done: §69 virtualization-vs-explicit, bit-exact
+
+**Did:** `vnr/src/vnr/backend/reference.py` (new `backend/` package — the plan §8 "reference
+backend kept forever as oracle") wires the PH1 oracles into two simulators sharing one
+driver discipline (every neuron steps every tick, sorted-ID order, deliveries before drive,
+spike-ordered pushes): `run_explicit` (stored adjacency, all resident) vs
+`run_virtualized` (procedural fan-out per spike, materialize-on-input, eviction through
+the WI04 frontier). `tests/test_reference.py`: 4 tests — the §69 gate plus determinism,
+seed-sensitivity, and spec validation.
+
+**§69 result:** 512 neurons / 1500 ticks / phased A-B-A block drive → spike trains, final
+V, final refractory ticks, and delivery counts ALL bit-exact (`==`), with 1,534 spikes,
+12,272 deliveries, 3,169 evictions, and max_resident 496/512. Virtual cost 2.8 s vs
+explicit 0.7 s (4× oracle overhead, all Python object churn — kernels own production).
+
+**Exactness mechanism (the hard part):** eviction freezes transient state while the
+explicit twin keeps decaying, so naive lazy reactivation diverges. Fix: rematerialize
+replays missed ticks as zero-input steps in true tick order — the identical op sequence,
+hence identical floats. Sound because any input at a missed tick would have triggered
+rematerialization then. Target hashes close over `% n_neurons` (test-harness convenience;
+real population addressing is PH6).
+
+**What I got wrong (tuning, twice):** (1) salt-and-pepper drive (8%/tick) produced ZERO
+spikes — single ticks lift V only ~0.015 mV, so noise never accumulates (WI02 lesson
+again: think in steady states). Rebuilt drive as sustained 100-tick blocks.
+(2) First spiking config peaked at max_resident 512/512 — fan-out rain covers the net;
+thinned to degree 8 / weight 0.4 / 60-tick eviction for a bounded peak. Both failures
+were honest non-vacuous asserts firing as designed.
+
+**Deviation noted:** plan sketches no `backend/` module before PH3, but §8 already names
+the "reference backend kept forever as oracle" — this is it, pure-Python event-driven,
+and PH3-WI01 (NumPy) will be measured against exactly this gate.
+
+**Next:** PH2-WI02 §70 1M-virtual/50K-budget run without full materialization.
+
