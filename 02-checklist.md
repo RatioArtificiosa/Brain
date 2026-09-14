@@ -29,7 +29,7 @@
 ## PH4 — Connectome + generators
 - [x] `PH4-WI01` `ConnectomeDataset` protocol + toy/synthetic/random impls (DONE 2026-09-14: 4 tests green, protocol + determinism + modularity + density band — see notes entry 29)
 - [ ] `PH4-WI02` FlyWire: `dataset auth`, resumable download, normalized schema, `connectome_report.json/html`; resolve 50M-vs-54.5M in manifest (MACHINERY DONE 2026-09-14: chunked resume + schema + manifest, 7 tests green; AUTH CLI DONE + owner token stored via `vnr dataset auth` — but live call returns 403 missing-permission:view on fafb (token authenticates, account lacks access; owner-side approval needed). See notes entry 32.)
-- [ ] `PH4-WI03` `MotifCatalog` with 100K-instantiation query
+- [x] `PH4-WI03` `MotifCatalog` with 100K-instantiation query (DONE 2026-09-14: canonical triad census + completeness proof + instantiate roundtrip + reports, 5 tests green, full suite 152 green — see notes entry 36)
 - [ ] `PH4-WI04` All 8 generators + metadata; duplication-divergence; modular preservation; `CognitiveRole` (no fake human regions)
 
 ## PH5 — Scaling science (gate: knee located; pivot rule applies)

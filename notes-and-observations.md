@@ -940,3 +940,27 @@ unit confusions above all.
 
 **Standing:** third independent oracle (Python, Rust, GeNN) agrees bit-for-bit.
 The adapter module documents all five semantics for the next backend author.
+
+---
+
+## 2026-09-14 · Entry 36 — PH4-WI03 done + AGENTS.md handover written
+
+**WI03 (supervisor):** `connectome/motifs.py` — canonical 6-bit triad codes (no
+hand-made Milo table that could mislabel), wedge enumeration PLUS combinatorial
+completion (single-edge→code 1, lone-mutual→code 3, null→code 0 — wedge-only
+counting silently misses all three, caught by the completeness invariant
+sum==C(n,3)); `instantiate` stamps structure-exact copies (100K query answered);
+`report.py` JSON+HTML for any dataset. 5 tests green, full suite 152 (census
+reconciled per-file after another stale-total scare), all four gates clean.
+
+**AGENTS.md (owner request):** ultra-thorough handover at `G:\BRAIN\AGENTS.md` —
+mission/state, directory map, machine+toolchains, credentials LOCATIONS ONLY,
+done/left work lists, conventions, ops state, gotcha catalog, key numbers,
+re-entry recipes. Outside both repos by construction (never committed). A new
+agent starting from it + the checklist loses nothing.
+
+**Still running at filing:** exact pilot census (slower than the 1-min estimate —
+hub neighborhoods explode pair loops; do NOT kill it, results go in the next
+entry). Cursor at 1M/20 chunks.
+
+**Next:** pilot census numbers → PH4-WI04 generators → PH5 knee graph.
