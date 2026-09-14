@@ -275,3 +275,25 @@ unit convention at the backend boundary when synaptic weights arrive (PH1-WI03+)
 **Next:** PH1-WI03 event engine.
 
 ---
+
+## 2026-09-14 · Entry 10 — Watchdog tick: WI03 independently re-done, found already shipped, verified
+
+**What happened:** this tick started from a stale checklist view (WI03 unchecked, no
+`events.py` in the tree) and re-implemented PH1-WI03 from scratch (`NeuralEvent` frozen +
+validated, `EventQueue` heap on `(tick, seq)` with `push/pop/peek/drain_tick/drain_until/
+drain_all`, 8 tests incl. 100K ordering+FIFO). Mid-tick I discovered the supervisor had
+already adopted, committed (`vnr@d130dfa`), checked off, and pushed identical work (entry 09)
+— the committed files match this tick's implementation including its later fixes (TypeError
+for type violations per TRY004, `itertools.pairwise`, ruff-format clean).
+
+**Verification (this tick, on the committed tree):** full suite 42 passed in ~23 s
+(dominated by the 1M-ID collision test), `ruff check .` clean repo-wide, 100K ordering
+push 0.72 s / drain 0.14 s (heapq ~140K pushes/s — ample for the reference oracle).
+`git log origin/main..HEAD` and `origin/docs..HEAD` both empty: code + docs pushed.
+No duplicate commit made; nothing uncommitted (`git status` clean both repos).
+
+**Lesson:** concurrent supervisor adoption can land mid-tick — before re-implementing,
+re-check `git log` in BOTH repos, not just the checklist file. Checklist is a lagging
+indicator when another writer is active.
+
+**Next:** PH1-WI04 active frontier.
