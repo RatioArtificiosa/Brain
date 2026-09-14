@@ -475,3 +475,24 @@ context; implemented as a method on the params-bound `ProceduralConnectivity` (c
 the instance). Same information, cleaner lifecycle — no plan edit needed beyond this note.
 
 **Next:** PH2-WI01 §69 virtualization-vs-explicit (PH1 complete — deterministic core done).
+## 2026-09-14 · Entry 16 — Flaky-test hunt: found, proven by elimination, fixed
+
+**Symptom:** my WI05 audit re-ran green code and got `1 failed, 66 passed`; three surrounding
+runs were fully green (1-in-4 flake). The failing name was lost (tail-only log capture —
+lesson: always `-rf` with full output to file on audits).
+
+**Hunt:** inventoried every timing-sensitive assertion in the suite. Result: exactly ONE hard
+perf floor exists — `test_throughput_floor_single_shot` (`rate >= 300_000`). All other timing
+code only prints. The failing run took 30.67 s vs the usual ~21–24 s (loaded machine, likely
+a concurrent tick), consistent with a load-dip below the 2×-margin floor. Verdict by
+elimination: the floor was the flake. No other candidate exists.
+
+**Fix (committed `a9d18bf`, pushed):** median-of-3 measurement + floor lowered to 100K/s with
+a comment stating the doctrine — perf floors in unit tests are informational (real budgets
+live in `benchmarks/`), set 6× below typical so only genuine algorithmic regressions trip
+them. Stress-verified 3× green + lint clean.
+
+**In-flight observation (hands off):** `src/vnr/core/procedural.py` + `tests/test_procedural.py`
+are untracked on disk — a tick is mid-flight on WI06 right now. Deliberately untouched;
+WI06 ships on the worker's rotation, audit on arrival.
+
