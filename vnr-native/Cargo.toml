@@ -1,0 +1,16 @@
+[package]
+name = "vnr-native"
+version = "0.1.0"
+edition = "2021"
+description = "Native hot-loop spike for VNR: event-driven LIF over procedural connectivity"
+
+[dependencies]
+blake2 = "0.10"
+digest = "0.10"
+
+[[bin]]
+name = "bench"
+path = "src/bench.rs"
+
+[profile.release]
+lto = true
