@@ -1,5 +1,6 @@
 artifacts/
 data/
+vnr-native/target/
 __pycache__/
 *.pyc
 .venv/
