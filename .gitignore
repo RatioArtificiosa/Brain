@@ -1,0 +1,9 @@
+artifacts/
+data/
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+checkpoints/
+*.parquet
+.DS_Store

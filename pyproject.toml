@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vnr"
+version = "0.1.0"
+description = "Virtual Neural Runtime — procedurally generated, dynamically materialized neural simulation"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6", "click>=8"]
+
+[project.optional-dependencies]
+gpu = ["torch"]
+data = ["pandas", "pyarrow", "caveclient"]
+dev = ["pytest>=8", "ruff"]
+
+[project.scripts]
+vnr = "vnr.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
