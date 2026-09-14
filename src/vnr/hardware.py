@@ -101,7 +101,9 @@ def discover_hardware() -> HardwareProfile:
     except ImportError:
         prof.ram_bytes = _windows_total_ram()
     if prof.cpu_threads == 0:
-        prof.cpu_threads = 1  # pathological fallback keeps doctor honest, never zero-divides
+        prof.cpu_threads = (
+            1  # pathological fallback keeps doctor honest, never zero-divides
+        )
     smi = _nvidia_smi("name,memory.total,driver_version")
     if smi:
         parts = [p.strip() for p in smi.splitlines()[0].split(",")]
@@ -135,9 +137,13 @@ def derive_budget(prof: HardwareProfile) -> RuntimeBudget:
     budget.max_gpu_resident_bytes = int(prof.gpu_vram_bytes * 0.80)
     budget.soft_gpu_limit = int(prof.gpu_vram_bytes * 0.60)
     if prof.gpu_vram_bytes == 0:
-        budget.notes.append("no NVIDIA GPU detected: GPU budgets are zero, CPU-only mode")
+        budget.notes.append(
+            "no NVIDIA GPU detected: GPU budgets are zero, CPU-only mode"
+        )
     if prof.torch_version is None:
-        budget.notes.append("torch not installed: GPU backend unavailable (install vnr[gpu])")
+        budget.notes.append(
+            "torch not installed: GPU backend unavailable (install vnr[gpu])"
+        )
     elif not prof.torch_cuda_available:
         budget.notes.append(
             f"torch {prof.torch_version} present but CUDA unavailable: "

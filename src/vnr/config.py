@@ -28,7 +28,9 @@ def validate_config(data: dict[str, Any]) -> None:
     """Raise ValueError listing every schema violation found (fail loud, all at once)."""
     if not isinstance(data, dict):
         raise TypeError(f"config root must be a mapping, got {type(data).__name__}")
-    errors = [f"missing section: {key}" for key in _REQUIRED_TOP_LEVEL if key not in data]
+    errors = [
+        f"missing section: {key}" for key in _REQUIRED_TOP_LEVEL if key not in data
+    ]
     exp = data.get("experiment", {})
     if not isinstance(exp, dict) or "id" not in exp:
         errors.append("experiment.id is required")
@@ -42,7 +44,9 @@ def validate_config(data: dict[str, Any]) -> None:
     runtime = data.get("runtime", {})
     if isinstance(runtime, dict):
         for key in ("active_neuron_budget", "gpu_memory_budget_mb"):
-            if key in runtime and (not isinstance(runtime[key], int) or runtime[key] <= 0):
+            if key in runtime and (
+                not isinstance(runtime[key], int) or runtime[key] <= 0
+            ):
                 errors.append(f"runtime.{key} must be a positive integer")
     if errors:
         raise ValueError("invalid VNR config:\n- " + "\n- ".join(errors))
@@ -59,7 +63,11 @@ def default_config(experiment_id: str = "E000") -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "experiment": {"id": experiment_id, "name": "smoke"},
-        "network": {"generator": "toy", "target_neurons": 1000, "target_synapses": 10000},
+        "network": {
+            "generator": "toy",
+            "target_neurons": 1000,
+            "target_synapses": 10000,
+        },
         "neuron": {"model": "lif", "dt_ms": 0.1},
         "connectivity": {"mode": "procedural", "seed": 12345},
         "runtime": {

@@ -11,7 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from watchdog import check_once
 
 
-def _setup_watch(tmp_path: Path, status: str | None, beat_age_sec: float | None) -> Path:
+def _setup_watch(
+    tmp_path: Path, status: str | None, beat_age_sec: float | None
+) -> Path:
     watch = tmp_path / "watch"
     watch.mkdir(parents=True, exist_ok=True)
     if status is not None:
@@ -67,12 +69,23 @@ def test_garbage_status_means_paused(tmp_path):
 
 
 def _launch(watch: Path, out_path: Path) -> subprocess.Popen:
-    env = dict(os.environ, VNR_WATCH_DIR=str(watch),
-               VNR_WATCH_INTERVAL_SEC="0.5", VNR_WATCH_PAUSE_AFTER_SEC="2")
+    env = dict(
+        os.environ,
+        VNR_WATCH_DIR=str(watch),
+        VNR_WATCH_INTERVAL_SEC="0.5",
+        VNR_WATCH_PAUSE_AFTER_SEC="2",
+    )
     out = out_path.open("w", encoding="utf-8")
-    return subprocess.Popen([sys.executable, "-u", str(Path(__file__).resolve().parent.parent
-                             / "scripts" / "watchdog.py")],
-                            env=env, stdout=out, stderr=subprocess.DEVNULL)
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-u",
+            str(Path(__file__).resolve().parent.parent / "scripts" / "watchdog.py"),
+        ],
+        env=env,
+        stdout=out,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def _wakeups(out_path: Path) -> list[str]:

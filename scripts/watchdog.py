@@ -119,7 +119,10 @@ def run_forever(
     watch_dir.mkdir(parents=True, exist_ok=True)
     log_path = watch_dir / "watchdog.log"
     health_path = watch_dir / "watchdog.health"
-    _log(log_path, f"watchdog start dir={watch_dir} interval={interval_sec}s pause_after={pause_after_sec}s stalled_after={stalled_after_sec}s")
+    _log(
+        log_path,
+        f"watchdog start dir={watch_dir} interval={interval_sec}s pause_after={pause_after_sec}s stalled_after={stalled_after_sec}s",
+    )
     alarmed = False
     iteration = 0
     while True:
@@ -151,8 +154,11 @@ def main(argv: list[str]) -> int:
     pause_after = _env_float("VNR_WATCH_PAUSE_AFTER_SEC", DEFAULT_PAUSE_AFTER_SEC)
     stalled_after = _env_float("VNR_WATCH_STALLED_AFTER_SEC", DEFAULT_STALLED_AFTER_SEC)
     if interval <= 0 or pause_after <= 0 or stalled_after <= 0:
-        print("VNR_WATCH_INTERVAL_SEC, VNR_WATCH_PAUSE_AFTER_SEC and "
-              "VNR_WATCH_STALLED_AFTER_SEC must be positive", file=sys.stderr)
+        print(
+            "VNR_WATCH_INTERVAL_SEC, VNR_WATCH_PAUSE_AFTER_SEC and "
+            "VNR_WATCH_STALLED_AFTER_SEC must be positive",
+            file=sys.stderr,
+        )
         return 2
     max_iter = 0
     if "--max-iterations" in argv:

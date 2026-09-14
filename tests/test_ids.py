@@ -17,7 +17,9 @@ def test_ids_are_uint64():
 
 
 def test_negative_and_huge_inputs_wrap_safely():
-    assert virtual_id(-1, -2, -3, -4, -5) == virtual_id(2**64 - 1, 2**64 - 2, 2**64 - 3, 2**64 - 4, 2**64 - 5)
+    assert virtual_id(-1, -2, -3, -4, -5) == virtual_id(
+        2**64 - 1, 2**64 - 2, 2**64 - 3, 2**64 - 4, 2**64 - 5
+    )
     assert 0 <= virtual_id(2**200, 0, 0, 0, 0) < 2**64
 
 
