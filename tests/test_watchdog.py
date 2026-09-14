@@ -28,9 +28,17 @@ def _log(watch: Path) -> Path:
     return watch / "watchdog.log"
 
 
-def test_active_never_alarms_even_when_stale(tmp_path):
-    watch = _setup_watch(tmp_path, "ACTIVE", 10_000)
+def test_active_with_fresh_heartbeat_stays_silent(tmp_path):
+    watch = _setup_watch(tmp_path, "ACTIVE", 60)
     assert check_once(watch, 180.0, _log(watch)) is None
+
+
+def test_active_but_stalled_alarms_once_per_episode(tmp_path):
+    watch = _setup_watch(tmp_path, "ACTIVE", 10_000)
+    alarm = check_once(watch, 180.0, _log(watch), stalled_after_sec=900.0)
+    assert alarm is not None and alarm.startswith("STALLED")
+    # still stale but inside the stalled threshold: silent
+    assert check_once(watch, 180.0, _log(watch), stalled_after_sec=20_000.0) is None
 
 
 def test_paused_with_fresh_heartbeat_stays_silent(tmp_path):

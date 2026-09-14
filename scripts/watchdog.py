@@ -8,19 +8,24 @@ Protocol (all files live in WATCH_DIR, default G:\\BRAIN\\VNR\\.watch):
   watchdog.health     watchdog's own last-check timestamp (self-health proof).
 
 Loop (every INTERVAL_SEC, default 15):
-  ACTIVE                -> silent, always (working: skip). Clears a prior episode.
+  ACTIVE + fresh beat    -> silent (working: skip). Clears a prior episode.
+  ACTIVE + stale beat    -> STALLED alarm once per episode. The agent is supposed
+                           to be working but produced no heartbeat for longer than
+                           STALLED_AFTER_SEC (default 900): it may be stuck, or a
+                           turn ended without yielding to PAUSED.
   PAUSED + fresh beat   -> silent. Clears a prior episode (re-arms the alarm).
   PAUSED + stale beat   -> print exactly one WAKEUP line, then stay silent until
                            activity resumes (no alarm spam for one pause episode).
   heartbeat missing     -> treated as infinitely stale (fault-tolerant: still alarms).
 
-Stdout discipline: ONLY "WAKEUP ..." lines go to stdout, because a monitor
-forwards every stdout line to the agent. Everything else goes to the log file.
-The loop never exits on its own: per-iteration errors are logged and skipped;
-only KeyboardInterrupt/SystemExit stop it.
+Stdout discipline: ONLY alarm lines ("WAKEUP ..."/"STALLED ...") go to stdout,
+because a monitor forwards every stdout line to the agent. Everything else goes
+to the log file. The loop never exits on its own: per-iteration errors are logged
+and skipped; only KeyboardInterrupt/SystemExit stop it.
 
 Tuning via environment (used by the test harness):
-  VNR_WATCH_DIR, VNR_WATCH_INTERVAL_SEC, VNR_WATCH_PAUSE_AFTER_SEC
+  VNR_WATCH_DIR, VNR_WATCH_INTERVAL_SEC, VNR_WATCH_PAUSE_AFTER_SEC,
+  VNR_WATCH_STALLED_AFTER_SEC
 """
 
 from __future__ import annotations
@@ -34,6 +39,7 @@ from pathlib import Path
 DEFAULT_WATCH_DIR = r"G:\BRAIN\VNR\.watch"
 DEFAULT_INTERVAL_SEC = 15.0
 DEFAULT_PAUSE_AFTER_SEC = 180.0
+DEFAULT_STALLED_AFTER_SEC = 900.0
 
 
 def _env_float(name: str, default: float) -> float:
@@ -68,8 +74,13 @@ def _heartbeat_age_sec(watch_dir: Path) -> float:
         return float("inf")
 
 
-def check_once(watch_dir: Path, pause_after_sec: float, log_path: Path) -> str | None:
-    """One evaluation. Returns a WAKEUP line when an alarm fires, else None.
+def check_once(
+    watch_dir: Path,
+    pause_after_sec: float,
+    log_path: Path,
+    stalled_after_sec: float = DEFAULT_STALLED_AFTER_SEC,
+) -> str | None:
+    """One evaluation. Returns an alarm line when one fires, else None.
 
     Pure decision logic (no sleeping, no printing) so tests can drive it directly.
     Caller tracks episode state via the returned value: a non-None return means
@@ -78,7 +89,15 @@ def check_once(watch_dir: Path, pause_after_sec: float, log_path: Path) -> str |
     status = _read_status(watch_dir)
     age = _heartbeat_age_sec(watch_dir)
     if status == "ACTIVE":
-        return None
+        if age <= stalled_after_sec:
+            return None
+        age_txt = "missing" if age == float("inf") else f"{age:.0f}s stale"
+        return (
+            f"STALLED status=ACTIVE but heartbeat {age_txt} "
+            f"(threshold={stalled_after_sec:.0f}s): worker may be stuck or a turn "
+            f"ended without yielding — resume next unchecked item in "
+            f"G:\\BRAIN\\VNR\\02-checklist.md"
+        )
     if age <= pause_after_sec:
         return None
     age_txt = "missing" if age == float("inf") else f"{age:.0f}s stale"
@@ -90,18 +109,22 @@ def check_once(watch_dir: Path, pause_after_sec: float, log_path: Path) -> str |
 
 
 def run_forever(
-    watch_dir: Path, interval_sec: float, pause_after_sec: float, max_iterations: int = 0
+    watch_dir: Path,
+    interval_sec: float,
+    pause_after_sec: float,
+    max_iterations: int = 0,
+    stalled_after_sec: float = DEFAULT_STALLED_AFTER_SEC,
 ) -> int:
     """Main loop. max_iterations>0 bounds it (used by tests; production = 0)."""
     watch_dir.mkdir(parents=True, exist_ok=True)
     log_path = watch_dir / "watchdog.log"
     health_path = watch_dir / "watchdog.health"
-    _log(log_path, f"watchdog start dir={watch_dir} interval={interval_sec}s pause_after={pause_after_sec}s")
+    _log(log_path, f"watchdog start dir={watch_dir} interval={interval_sec}s pause_after={pause_after_sec}s stalled_after={stalled_after_sec}s")
     alarmed = False
     iteration = 0
     while True:
         try:
-            alarm = check_once(watch_dir, pause_after_sec, log_path)
+            alarm = check_once(watch_dir, pause_after_sec, log_path, stalled_after_sec)
             if alarm is not None and not alarmed:
                 print(alarm, flush=True)  # THE alarm channel: monitor forwards this
                 _log(log_path, f"ALARM: {alarm}")
@@ -126,8 +149,10 @@ def main(argv: list[str]) -> int:
     watch_dir = Path(os.environ.get("VNR_WATCH_DIR", DEFAULT_WATCH_DIR))
     interval = _env_float("VNR_WATCH_INTERVAL_SEC", DEFAULT_INTERVAL_SEC)
     pause_after = _env_float("VNR_WATCH_PAUSE_AFTER_SEC", DEFAULT_PAUSE_AFTER_SEC)
-    if interval <= 0 or pause_after <= 0:
-        print("VNR_WATCH_INTERVAL_SEC and VNR_WATCH_PAUSE_AFTER_SEC must be positive", file=sys.stderr)
+    stalled_after = _env_float("VNR_WATCH_STALLED_AFTER_SEC", DEFAULT_STALLED_AFTER_SEC)
+    if interval <= 0 or pause_after <= 0 or stalled_after <= 0:
+        print("VNR_WATCH_INTERVAL_SEC, VNR_WATCH_PAUSE_AFTER_SEC and "
+              "VNR_WATCH_STALLED_AFTER_SEC must be positive", file=sys.stderr)
         return 2
     max_iter = 0
     if "--max-iterations" in argv:
@@ -136,7 +161,7 @@ def main(argv: list[str]) -> int:
         except (IndexError, ValueError):
             print("--max-iterations needs an integer", file=sys.stderr)
             return 2
-    return run_forever(watch_dir, interval, pause_after, max_iter)
+    return run_forever(watch_dir, interval, pause_after, max_iter, stalled_after)
 
 
 if __name__ == "__main__":
