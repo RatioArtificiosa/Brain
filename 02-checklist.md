@@ -34,8 +34,9 @@
 - [x] `PH4-WI04` All 8 generators + metadata; duplication-divergence; modular preservation; `CognitiveRole` (no fake human regions) (DONE 2026-09-14: 9 tests green, determinism + exact counts + config-model control — see notes entry 37)
 
 ## PH5 — Scaling science (gate: knee located; pivot rule applies)
-- [ ] `PH5-WI01` Four-way §37 experiment + RTF reporting
-- [ ] `PH5-WI02` E004 scaling 1×–100× with 6 controls, full §39 metrics
+- [x] `PH5-WI00` CLI product surface: all 6 stubs replaced with real commands (`simulate`, `connectome stats|census`, `generate`, `benchmark`, `experiment four-way`, `report`) + `observe/report.py` + `ui/` output layer (DONE 2026-09-14: 18 new CLI tests, suite 203→221; found+fixed a real `_run_sparse` timing bug (cosine 0.78→1.0), a `generate --out` crash, and `platform.os.cpu_count()`; **measured that residency is governed by fan-out, not drive density** (degree 8→76.6%, degree 2→36.7% resident) — see notes entry 39)
+- [x] `PH5-WI01` Four-way §37 experiment + RTF reporting (DONE 2026-09-14: `experiments/runner.py`, 4 conditions sharing one drive, per-metric fidelity vs the explicit reference, §55 run record + §83 report. All four conditions bit-exact at default config. **Caveat recorded: synthetic uniform fan-out caps the compression benefit — degree 8→76.6% resident, degree 2→36.7%; the connectome's locality is untested.** See notes entry 39)
+- [ ] `PH5-WI02` E004 scaling 1×–100× with 6 controls, full §39 metrics (**now the natural next item**: it is the experiment that tests the fan-out ceiling found in WI00/WI01)
 - [ ] `PH5-WI03` Plasticity ladder + hybrid strategy + promotion/demotion + `SynapseCache`; replay tests to statistical tolerance
 - [ ] `PH5-WI04` Memory tiers + eviction policies + pools + GC telemetry + seed-reconstructable checkpoints
 - [ ] `PH5-WI05` Telemetry, sampled causal traces, stability monitor, auto-reports (hypothesis/observation/interpretation split)

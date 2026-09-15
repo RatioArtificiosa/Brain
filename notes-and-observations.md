@@ -1078,3 +1078,90 @@ corpus is absent). Full suite **203 passed** (was 161). All four gates clean.
 
 **Next:** PH4-WI02 live download (still owner-blocked on FlyWire approval), else
 PH5-WI01 four-way experiment.
+
+---
+
+## 2026-09-14 · Entry 39 — The CLI is the product: 6 stubs replaced with the real surface (PH5-WI00)
+
+**The defect, stated plainly first.** For nine commits the project's public
+README told the world to run `vnr simulate` as the 5-minute quickstart. That
+command exited 2 saying "not implemented until PH1" — and PH1, PH2, and PH3
+were all COMPLETE. `vnr doctor` printed "FlyWire dataset ... missing (PH4)"
+while 992,991 real rows sat on disk. This is worse than an unfinished stub:
+it is the product lying about the project's own state, in the one artefact
+(README) written specifically for outsiders. Everything built in PH1-PH4 was
+reachable only via `python scripts/*.py` and `pytest`.
+
+**What shipped.** All six stubbed commands now do real work, plus a new
+`observe/` report renderer and `ui/` output layer:
+
+| command | what it now does |
+|---|---|
+| `vnr simulate` | runs explicit vs virtualized, prints measured spikes/residency/fidelity |
+| `vnr connectome stats` | measures the real pilot: 992,991 rows, 47,261 sources, 285,343 neurons, 538,477 distinct edges |
+| `vnr connectome census` | exact triad census, `--limit-chunks`, `--json`, per-class table |
+| `vnr generate <g>` | all 8 generators + `--list`, writes graph + full lineage block |
+| `vnr benchmark` | median-of-N per backend + oracle agreement check |
+| `vnr experiment four-way` | the 37 four-way comparison, writes a 55 run record |
+| `vnr report <run-dir>` | standalone dark HTML/JSON, hypothesis/observation/interpretation separated (5/83) |
+
+18 new CLI tests in `tests/test_cli_surface.py`; the old PH0 stub test was
+replaced by a **regression guard that fails if any command ever claims a
+stale phase again**. Suite 203 -> 221.
+
+**Three real bugs found by walking the happy path** (which is why the
+walkthrough matters more than the unit tests):
+
+1. **`_run_sparse` was wrong.** It stepped only neurons receiving input ON
+   that tick, but this integrator decays across silent ticks, so a neuron
+   lifted near threshold at T fires at T+1 with zero input — and that tick
+   was skipped. Symptom: spike COUNTS matched the reference exactly while
+   timing cosine dropped to **0.78**, and the fidelity gate FAILED a
+   condition whose spike count was identical. Caught by plan 72's
+   complementary metrics doing precisely the job they were built for:
+   counts matching while times drift. Fixed, cosine now 1.000000.
+2. **`vnr generate --out` crashed** with a raw traceback when the parent
+   directory did not exist. Fixed via a shared `_write_json` helper so no
+   command can repeat it.
+3. **`platform.os.cpu_count()` in the run-record fallback** — pyright caught
+   it; a latent AttributeError that would only fire on the path that runs
+   when hardware discovery fails, i.e. exactly when a record matters most.
+
+**A measurement finding that redirects the demo (and the science).** The
+original `FourWaySpec` defaults (degree 8, drive density 0.4) left **~93% of
+neurons resident** — a correct result that demonstrates nothing. I swept the
+space (`scripts/tune_four_way.py`, kept as evidence) and the answer is
+structural: **residency is governed by FAN-OUT, not drive density.**
+Measured at identical drive: degree 8 -> 76.6% resident, degree 4 -> 61.7%,
+degree 2 -> 36.7%. Then at degree 2: density 0.05 -> 35.9%, density 0.02 ->
+**24.2%**. Cause: with uniform random connectivity every spike scatters to
+`out_degree` random neurons, so the touched set grows toward the whole
+network no matter how few neurons are driven.
+
+This is a real result and it is NOT good news for the synthetic path: **the
+virtualization benefit has a structural ceiling under uniform connectivity
+that does not exist for a real connectome**, where activity is spatially and
+topologically local. New defaults (degree 4, density 0.02) put the demo in
+the regime where the mechanism is visible (~40-47% resident at sensible
+sizes, bit-exact throughout), and the ceiling is documented in the module
+rather than hidden. PH5-WI02's 1x-100x sweep is now the place to test
+whether connectome structure actually lifts it — and if it does not, that is
+the 91 pivot, and it ships.
+
+**Honest note on a self-inflicted detour.** While editing `cli.py` I used
+PowerShell `Set-Content -Encoding UTF8`, which round-tripped multi-byte
+characters through the legacy code page and corrupted 8 of them (an em dash
+and seven section signs) into invalid bytes. Two follow-up inline repairs
+made it worse, and the file stopped compiling. I restored it from git HEAD
+and rewrote it **pure ASCII** — the durable fix, and consistent with the
+`vnr/ui` policy of transliterating for consoles that cannot carry non-ASCII
+anyway. Lesson recorded for the ops section: **never edit source through a
+PowerShell text round-trip; use the file tools, and keep CLI source ASCII.**
+A scan confirms all 75 source files are valid UTF-8 with no BOMs.
+
+**Also fixed:** `vnr doctor` no longer prints a hardcoded dataset state (it
+measures via `connectome/corpus.py`, the new single source of truth for
+pilot layout), and console output no longer renders em dashes as U+FFFD.
+
+**Next:** PH5-WI02 (E004 scaling sweep) — now the natural follow-up, since it
+is the experiment that tests the fan-out ceiling just found.
