@@ -19,7 +19,14 @@ REPO = "https://github.com/RatioArtificiosa/Brain.git"
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str]:
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=900)
+    proc = subprocess.run(
+        cmd,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,  # returncode is inspected by the caller
+    )
     return proc.returncode, (proc.stdout + proc.stderr)
 
 
