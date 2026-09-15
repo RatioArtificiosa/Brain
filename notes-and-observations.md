@@ -984,3 +984,97 @@ accident, twice now.
 revised 10× upward in the next entry with real numbers). Cursor holds at 1M.
 
 **Next:** PH5-WI01 (four-way experiment + RTF) — the knee graph begins.
+
+---
+
+## 2026-09-14 · Entry 38 — Census scaling fixed: 1888s -> 68.7s (27.5x), bug in reference subset path found
+
+**The pending census finished, and the estimate in entry 37 was wrong.** Real
+numbers first, because they reframe the whole item: the exact census on the
+1M-edge pilot took **1,888.1 s (31.5 min)**, not "~1 min" (WI03) and not the
+"30+ min" guess (entry 37). Result: **17,592,594,854,790 triples** over 47,261
+sources, of which 99.95% are null (M00). Top classes: M00 17.583e12, M01
+8.865e9, M03 591.4M, M06 3.65M, M10 3.17M, M05 2.52M, M11 1.14M, M07 0.91M,
+M15 246,161, M21 176,557, M23 31,391, M27 31,193 (the only cyclic class in the
+top 12).
+
+**Where the 1,888 s actually went (measured, not assumed).** Stage timing on the
+real data: pred/und build 0.7 s, neighborhood sizing 0.2 s, dedupe walk 85.0 s.
+That left **~1,800 s unaccounted — 95% of the runtime — in `canonical_code()`**,
+called 44.9M times. Micro-benchmark: 7.34 us/call, and 7.34 us x 44.9M = 5.5 min
+of pure compute before GC pressure on the 45M-tuple `seen` set. Both halves had
+to go.
+
+**The fix, and a correction to my own first attempt.** I first assumed the
+canonical code could be read directly in sorted-id order with no permutation
+search. I verified that exhaustively before building on it and it was WRONG:
+only **16 of the 64** masks are self-canonical, so the raw mask is never usable.
+The correct fast form keeps the permutation-minimum but moves it into a
+precomputed **64-entry `_CANONICAL` table** built from the same `_permute_mask`
+the reference uses — one list index instead of a generator over 36+ set
+lookups. Errors of this kind are exactly why the equivalence suite exists.
+
+**Two changes shipped (`motifs.py`):**
+1. `canonical_code` now indexes `_CANONICAL[mask]` (table built from
+   `_permute_mask`, so fast and reference cannot drift). Public-API contract
+   preserved: missing keys tolerated via `.get`, order-independence holds.
+2. `census_fast` deduplicates **structurally** instead of via a global set.
+   Each edge-bearing triple is enumerated exactly once, from its canonical
+   center (the smallest member carrying one of the triple's edges — unique by
+   construction). No 44.9M-tuple set, no per-triple allocation. Codes are
+   computed on a compact integer index space. The no-wedge classes (0/1/3) are
+   counted combinatorially, exactly as the reference does, and are
+   **materialized at count 0** too so the output shape is a drop-in match.
+
+**Measured result on the same input:**
+| path | time | speedup |
+|---|---|---|
+| `census` (reference) | 1,888.1 s | 1x |
+| `census_fast` | **68.7 s** | **27.5x** |
+
+Per-code counts are **identical** (verified two ways: the full-pilot run
+compared against entry-37's recorded reference numbers, and a 5-chunk slice
+where reference and fast ran back-to-back — equal, 762,244,892,200 triples).
+My intermediate version measured 114.7 s; the cleanup that removed a redundant
+canonical-center rescan took it to 68.7 s.
+
+**A latent bug in the REFERENCE found and fixed.** The `nodes=` subset
+parameter was never exercised by any test or caller since WI03. It was broken:
+neighborhoods were built from the full `succ`/`pred` without filtering to the
+subset, so outside nodes leaked into triples and the null count came out
+**negative**. Ground truth on a 6-node complete digraph restricted to
+`[0,1,2]`: the reference returned `{63: 19, 0: -18}` (impossible) versus the
+correct `{63: 1}`. `census` now restricts adjacency to the universe before
+enumerating, and both paths agree on subsets. Numbers cannot be negative —
+verifying that should not have taken a new test to notice.
+
+**Honest note on where the fast path is NOT faster.** On uniformly random
+synthetic graphs the fast path was measured *slower* than the reference up to
+~320K edges (0.33x at 320K). The reason is structural, not a defect: uniform
+graphs have few high-degree centers, so the reference's cheap set-dedupe beats
+my per-center index walk. Real connectome data is the opposite regime —
+sparse, heavy-tailed, hub-dominated — which is exactly why it wins 27.5x
+there. `census_best` therefore dispatches on size (>= 64 sources -> fast) and
+is tested on both sides of the threshold. Do not read the synthetic crossover
+as a counterexample to the real-data result; they are different regimes.
+
+**Cost model worth carrying forward (this is the reusable lesson):** the driver
+is NOT the triple count. It is `sum(deg^2)` for the wedge walk (60.6M on this
+pilot) plus the number of *distinct* edge-bearing triples for dedupe (44.9M).
+Total triples (1.76e13) are irrelevant if you never materialize them. The next
+scale (full corpus, ~250x) is now bounded by the wedge walk, not by Python
+object churn.
+
+**Tests:** `tests/test_motifs_fast.py` (new, 42 tests) asserts
+`census_fast == census` on: empty/tiny graphs, all four no-wedge classes
+individually and mixed, 12 seeded random digraphs, tournaments and DAGs, the
+ToyDataset (re-pinned at 220 triples), a complete digraph, explicit subsets,
+outside-edge leakage, self-loops, determinism, the `sum == C(n,3)` invariant,
+size-guard behavior, and a **real-pilot slice** (3 chunks, skipped when the
+corpus is absent). Full suite **203 passed** (was 161). All four gates clean.
+
+**Also:** `scripts/census_pilot.py` now uses the fast path by default with a
+`--reference` flag for one-off equivalence checks.
+
+**Next:** PH4-WI02 live download (still owner-blocked on FlyWire approval), else
+PH5-WI01 four-way experiment.
