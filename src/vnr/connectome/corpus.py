@@ -18,15 +18,39 @@ from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "DataExtraMissing",
     "PilotCorpus",
     "PilotNotFound",
     "default_pilot_path",
     "load_parquet_rows",
+    "require_data_extra",
 ]
 
 
 class PilotNotFound(FileNotFoundError):
     """Raised when the corpus directory has no chunks (message names the fix)."""
+
+
+class DataExtraMissing(ImportError):
+    """Raised when the [data] extra (pyarrow) is not installed.
+
+    Distinct from :class:`PilotNotFound` on purpose: "you did not install the
+    optional dependency" and "the data is not on this machine" are different
+    situations needing different fixes. Conflating them made `vnr doctor`
+    report `ModuleNotFoundError` to fresh installers, which reads as a broken
+    product rather than a missing extra (notes entry 40).
+    """
+
+
+def require_data_extra() -> None:
+    """Fail loud and helpfully when parquet support is unavailable."""
+    try:
+        import pyarrow.parquet  # noqa: F401
+    except ImportError as exc:
+        raise DataExtraMissing(
+            'parquet support is not installed - run `pip install -e ".[data]"` '
+            "to read connectome corpora"
+        ) from exc
 
 
 def default_pilot_path() -> Path:
@@ -44,12 +68,18 @@ class PilotCorpus:
 
     @classmethod
     def discover(cls, root: Path | None = None) -> PilotCorpus:
-        """Locate the corpus, or raise :class:`PilotNotFound` with the fix."""
+        """Locate the corpus, or raise with a message naming the actual fix.
+
+        Order matters: the pyarrow check runs FIRST, so a fresh install hears
+        "install the data extra" rather than "no chunks found" when the real
+        problem is the missing dependency.
+        """
+        require_data_extra()
         path = Path(root) if root is not None else default_pilot_path()
         chunks = tuple(sorted(path.glob("chunk-*.parquet"))) if path.is_dir() else ()
         if not chunks:
             raise PilotNotFound(
-                f"no FlyWire pilot chunks under {path} — run "
+                f"no FlyWire pilot chunks under {path} - run "
                 f"`python scripts/bulk_synapses.py` once credentials allow"
             )
         offset = 0

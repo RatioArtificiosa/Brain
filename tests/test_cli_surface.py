@@ -280,6 +280,66 @@ def test_no_command_claims_a_false_phase():
         assert "not implemented" not in out.lower(), f"{cmd} still a stub"
 
 
+# ------------------------------------------------- fresh-install behaviour
+# These cover the states a user hits when they install WITHOUT the [data]
+# extra, or on a machine with no corpus. They must read as guidance, never as
+# a traceback or a misleading ModuleNotFoundError (notes entry 40).
+
+
+def test_doctor_explains_a_missing_data_extra_instead_of_crashing(monkeypatch):
+    """`doctor` must name the fix, not leak an exception type."""
+    from vnr.connectome import corpus as corpus_mod
+
+    def boom() -> None:
+        raise corpus_mod.DataExtraMissing("parquet support is not installed")
+
+    monkeypatch.setattr(corpus_mod, "require_data_extra", boom)
+    out = run("doctor").output
+    assert "ModuleNotFoundError" not in out, out
+    assert "data" in out.lower(), out
+    assert "STATUS: READY" in out  # diagnostics still complete
+
+
+def test_connectome_commands_give_guidance_when_pilot_absent(tmp_path, monkeypatch):
+    """A missing corpus is a normal state: one clean line, not a stack trace."""
+    from vnr.connectome import corpus as corpus_mod
+
+    monkeypatch.setattr(
+        corpus_mod, "default_pilot_path", lambda: tmp_path / "nonexistent"
+    )
+    result = run("connectome", "stats")
+    assert result.exit_code != 0
+    assert "Traceback" not in result.output, result.output
+    assert "bulk_synapses" in result.output or "no FlyWire pilot" in result.output
+
+
+def test_corpus_distinguishes_missing_extra_from_missing_data(tmp_path):
+    """Two different problems must produce two different exception types."""
+    from vnr.connectome.corpus import DataExtraMissing, PilotCorpus, PilotNotFound
+
+    assert issubclass(DataExtraMissing, ImportError)
+    assert issubclass(PilotNotFound, FileNotFoundError)
+    # With pyarrow present, an empty directory is PilotNotFound - the two
+    # situations must never collapse into one message.
+    with pytest.raises(PilotNotFound):
+        PilotCorpus.discover(root=tmp_path / "empty")
+
+
+def test_numpy_is_a_declared_core_dependency():
+    """The plan lists numpy as a core dep; a fresh install must get it.
+
+    It was missing from pyproject.toml until entry 40, which silently reduced
+    `vnr benchmark` to a single backend for anyone installing without extras.
+    """
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    deps = " ".join(data["project"]["dependencies"])
+    assert "numpy" in deps, f"numpy missing from core dependencies: {deps}"
+
+
 def test_help_lists_every_documented_command():
     out = run("--help").output
     for cmd in (

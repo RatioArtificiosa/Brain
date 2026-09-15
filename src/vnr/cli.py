@@ -73,17 +73,45 @@ def _write_json(path: str, payload: object) -> Path:
 
 
 def _dataset_line() -> str:
-    """Measure the pilot corpus. Never a placeholder, never a guess."""
-    try:
-        from vnr.connectome.corpus import PilotCorpus
+    """Measure the pilot corpus. Never a placeholder, never a guess.
 
+    Reports the three distinct states a user can actually be in, each with
+    its own fix: data extra not installed, corpus not on this machine, or a
+    measured row count. Collapsing these into one message is what made a
+    fresh install see `ModuleNotFoundError` here (notes entry 40).
+    """
+    try:
+        from vnr.connectome.corpus import DataExtraMissing, PilotCorpus
+    except ImportError:  # pragma: no cover - corpus module is part of the package
+        return "unavailable (package incomplete)"
+    try:
         corpus = PilotCorpus.discover()
-        return (
-            f"{fmt_count(corpus.row_count())} rows / {corpus.chunk_count} chunks "
-            f"({fmt_bytes(corpus.total_bytes())})"
-        )
-    except Exception as exc:  # noqa: BLE001 - absence is a normal state here
-        return f"not present ({type(exc).__name__}) - run scripts/bulk_synapses.py"
+    except DataExtraMissing:
+        return 'not installed - run `pip install -e ".[data]"` to read corpora'
+    except FileNotFoundError:
+        return "not on this machine - run scripts/bulk_synapses.py once authorized"
+    except Exception as exc:  # noqa: BLE001 - never crash the diagnostics line
+        return f"unreadable ({type(exc).__name__})"
+    return (
+        f"{fmt_count(corpus.row_count())} rows / {corpus.chunk_count} chunks "
+        f"({fmt_bytes(corpus.total_bytes())})"
+    )
+
+
+def _require_pilot():
+    """Locate the pilot, converting absence into a clean CLI error.
+
+    A keyed lookup that fails is a normal situation for this project; it must
+    read as guidance, not as a stack trace.
+    """
+    from vnr.connectome.corpus import DataExtraMissing, PilotCorpus
+
+    try:
+        return PilotCorpus.discover()
+    except DataExtraMissing as exc:
+        raise click.ClickException(str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 # --------------------------------------------------------------------- doctor
@@ -162,9 +190,7 @@ def connectome() -> None:
 @click.option("--json", "json_path", type=click.Path(), default=None)
 def stats(json_path: str | None) -> None:
     """Structural summary of the real corpus on disk."""
-    from vnr.connectome.corpus import PilotCorpus
-
-    corpus = PilotCorpus.discover()
+    corpus = _require_pilot()
     info = corpus.describe()
     graph = corpus.successors()
     neurons: set[int] = set()
@@ -213,10 +239,9 @@ def census(limit_chunks: int | None, json_path: str | None, top: int) -> None:
     1M-edge pilot this is 68.7s versus 1888.1s for the reference oracle, with
     identical per-code counts.
     """
-    from vnr.connectome.corpus import PilotCorpus
     from vnr.connectome.motifs import census_fast
 
-    corpus = PilotCorpus.discover()
+    corpus = _require_pilot()
     graph = corpus.successors(limit_chunks=limit_chunks)
     if limit_chunks:
         echo(f"Using first {limit_chunks} of {corpus.chunk_count} chunks")

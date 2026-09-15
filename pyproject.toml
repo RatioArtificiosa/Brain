@@ -9,7 +9,12 @@ description = "Virtual Neural Runtime — procedurally generated, dynamically ma
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-dependencies = ["pyyaml>=6", "click>=8"]
+dependencies = ["numpy>=1.26", "pyyaml>=6", "click>=8"]
+# numpy is a CORE dependency (plan 3 lists it as such) because the vectorized
+# backend and the motif/census modules import it unconditionally. It was
+# missing here until 2026-09-14, which made `vnr benchmark` silently run only
+# the pure-Python oracle for anyone who installed without extras - a defect
+# visible only in a fresh environment (notes entry 40).
 
 [project.optional-dependencies]
 gpu = ["torch"]
