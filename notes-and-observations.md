@@ -1165,3 +1165,62 @@ pilot layout), and console output no longer renders em dashes as U+FFFD.
 
 **Next:** PH5-WI02 (E004 scaling sweep) — now the natural follow-up, since it
 is the experiment that tests the fan-out ceiling just found.
+
+
+---
+
+## 2026-09-14 · Entry 40 — Reachability audit: two defects only a FRESH INSTALL reveals
+
+**The question that prompted this:** "is it reachable now?" The right way to
+answer was not to re-run the commands on the dev machine (where they had just
+been written) but to CLONE THE PUBLIC REPO into a temp directory, create a
+clean venv, and follow the README exactly — the way a stranger would. Two real
+defects appeared immediately, neither visible from inside the working tree.
+
+**Defect 1 — `numpy` was not a declared dependency.** `pyproject.toml` listed
+only `pyyaml` and `click`, while plan §3 explicitly names numpy as a CORE
+dependency. Consequence in a fresh install: `vnr benchmark` printed
+"numpy backend unavailable: No module named 'numpy'" and silently reported a
+ONE-row backend table, and the vectorized path — the PH3-WI01 work measured at
+1.98× — was simply absent. Everything worked on the dev machine because numpy
+was installed system-wide years of experiments ago. **Fixed:** numpy>=1.26 is
+now a core dependency, with a test asserting it stays one, so a fresh install
+gets both backends. Verified in a clean venv: `Installing collected packages:
+pyyaml, numpy, click, vnr`, then `numpy (vectorized) 5.3 ms ... 2.00x` — which
+also independently reproduces the recorded B003 ratio.
+
+**Defect 2 — `doctor` reported `ModuleNotFoundError` to new users.** The
+dataset line said `not present (ModuleNotFoundError) - run
+scripts/bulk_synapses.py`, i.e. it blamed the wrong thing. The actual situation
+was "you did not install the [data] extra". A stranger reading
+`ModuleNotFoundError` concludes the product is broken. Compounding it,
+`vnr connectome stats` dumped a full Python traceback in that state.
+
+**Fixed by separating two genuinely different states**, which had been
+collapsed into one exception path:
+
+| state | exception | what the user now sees |
+|---|---|---|
+| `[data]` extra not installed | `DataExtraMissing(ImportError)` | ``not installed - run `pip install -e ".[data]"` to read corpora`` |
+| extra installed, corpus absent | `PilotNotFound(FileNotFoundError)` | `not on this machine - run scripts/bulk_synapses.py once authorized` |
+| both present | - | `992,991 rows / 20 chunks (11.1 MiB)` |
+
+`discover()` checks the import FIRST, so the message is always the actionable
+one. The CLI converts both into a single clean line (`Error: ...`, exit 1,
+no traceback). Verified end to end in a clean venv: fresh install shows the
+guidance; following the guidance (`pip install -e ".[data]"`) flips the same
+line to the measured 992,991 rows and `connectome stats` exits 0.
+
+**What this says about the verification habit.** Every one of these was
+invisible to 221 passing tests, to ruff, to pyright, and to a manual walkthrough
+on the dev machine — because all four run where the dependencies already
+exist. The reachability question is answered only by the clean-room clone.
+Recommendation carried forward: after any packaging or entry-point change, run
+the clone-and-install check (it takes ~90 s) rather than trusting the dev tree.
+
+**Suite:** 221 -> 225 (4 new tests: doctor-without-extra, connectome-guidance,
+exception-type separation, and a pyproject guard that numpy stays a core dep).
+All four gates clean.
+
+**Next:** PH5-WI02 (E004 scaling sweep) — unchanged, and now the reachable
+`vnr experiment four-way` makes it runnable with one command.

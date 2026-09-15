@@ -71,7 +71,12 @@
 - [ ] `PH8-WI15` Four-pane observatory extension (brain/state/representation/speech + source chain)
 
 ## Standing rules (every task)
-- [ ] Interface → test → reference impl → benchmark → optimize (§96)
-- [ ] §97 end-of-task report in notes log
-- [ ] Small commits, conventional messages (§98); feature branches (§99)
-- [ ] No stubs checked in; no silent scope drops (log deferrals with re-entry condition)
+- [x] Interface → test → reference impl → benchmark → optimize (§96)
+- [x] §97 end-of-task report in notes log
+- [x] Small commits, conventional messages (§98); feature branches (§99)
+- [x] No stubs checked in; no silent scope drops (log deferrals with re-entry condition)
+- [x] **Clean-room reachability check** after any packaging/entry-point change: clone the
+      public repo into a temp dir, fresh venv, follow the README. Added 2026-09-14 after
+      entry 40 found two defects (undeclared numpy core dep; `ModuleNotFoundError` shown
+      to new users) that 221 tests, ruff, pyright, AND a dev-machine walkthrough all missed
+      — because every one of them runs where the dependencies already exist.
