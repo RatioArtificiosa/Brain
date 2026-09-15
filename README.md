@@ -158,10 +158,31 @@ under the brain's direction, and the brain can switch it off.
 - **Failure is data** — instability triggers pause, snapshot, and diagnosis. A null result that maps the boundary ships like any other.
 
 ```powershell
-pip install -e .
-vnr doctor        # hardware check: CPU · RAM · GPU · CUDA · dataset
-pytest            # the oracle suite — everything must stay green
-vnr simulate      # watch the frontier breathe
+pip install -e .            # core: numpy/pyyaml/click
+pip install -e ".[data]"    # + pyarrow/pandas (real connectome work)
+
+vnr doctor                  # hardware, budget, and dataset state
+vnr simulate                # materialize and evict; proves fidelity is exact
+vnr benchmark               # time each backend against the oracle
+```
+
+The interesting commands, once the machine checks out:
+
+```powershell
+vnr connectome stats                     # measure the real FlyWire pilot on disk
+vnr connectome census --limit-chunks 2   # exact triad motifs (fast path)
+vnr generate hybrid --copies 3           # grow a scaled network + its lineage
+vnr experiment four-way                  # the compression-vs-fidelity comparison
+vnr report artifacts/<run-id>            # render that run as a standalone page
+```
+
+Everything the CLI prints is a number it measured in that run. Anything a human
+reads, `--json` also writes, so results are scriptable and auditable:
+
+```powershell
+vnr simulate --json run.json
+vnr connectome census --json motifs.json
+vnr report artifacts/<run-id> --out report.html   # dark, self-contained, offline
 ```
 
 ## 🌌 Where this goes
