@@ -1499,3 +1499,66 @@ short-range structure while breaking only triangles, or it is not a control.
 **Next:** fix the motif control; push the sweep past the knee (the axis is
 budget down to 1-2%, plus a recurrent-sensitive drive regime); then the knee
 graph itself.
+
+
+---
+
+## 2026-09-14 · Entry 44 — E004 control FIXED: the ordering is now monotonic in structure
+
+Entry 43 recorded an honest defect: `motif_destroyed` produced curves
+IDENTICAL to `random`, because it was literally `rng.choice(keep)` - the same
+rewiring. It was not a control, it was a duplicate. A control that duplicates
+another control is worse than no control: it inflates apparent rigor without
+adding evidence.
+
+**The fix.** A proper motif control must hold *degree* AND *locality* constant
+while randomising *triadic structure* specifically. Implemented by shuffling
+the multiset of edge SPANS (target − source) and reassigning them to sources:
+out-degrees are untouched and the edge-length distribution is preserved, but
+which triangles form is randomised. Verified distinct before use:
+
+    real               edges=535  mutual=270  median_span=1717
+    random             edges=748  mutual= 12  median_span=2089
+    motif_destroyed    edges=672  mutual= 19  median_span=1345
+    -> differs from real in 660/672 edges, and differs from random
+
+**Corrected result (300 neurons, 250 ticks, 4 conditions):**
+
+| condition | resident @ 100% budget | resident @ 6.25% |
+|---|---|---|
+| **locality_preserved_only** | **24.7%** | **11.3%** |
+| real FlyWire | 35.7% | 17.0% |
+| motif_destroyed | 44.7% | 17.3% |
+| random | 64.3% | 20.7% |
+
+**The ordering is now monotonic in how much real structure is preserved:**
+real (35.7%) < motif_destroyed (44.7%) < random (64.3%). Fidelity is
+bit-exact (cosine 1.000000, rate 1.0000, gate PASS) at every point.
+
+This is the clean form of the hypothesis-(a) claim: connectome structure
+reduces the resident cost of running the network, and the more structure you
+destroy, the more it costs. With the duplicate control removed, the middle
+rung (motif_destroyed, 44.7%) is what makes it a curve rather than a single
+comparison — real beats a graph that keeps degree and locality but loses its
+motifs.
+
+**And locality remains the dominant variable of the three:** filtering to the
+shorter half of edges (locality_preserved_only) reaches 24.7% where the full
+connectome needs 35.7%. Long-range edges are the expensive ones, exactly as
+predicted by entry 39's fan-out measurement. Three independent lines of
+evidence now point the same way.
+
+**STILL NO KNEE.** Fidelity held at every budget down to 6.25% for every
+condition, for the second time. This is becoming a robust negative result
+about the *regime*, not the method: the current drive-dominated stimulus (8
+hot neurons, amplitude 12, block drive) does not propagate recurrent error, so
+no amount of eviction can change the outcome. Plan §71 predicted exactly this
+and deferred it to PH5. **The knee graph cannot be produced with this
+stimulus.** The next step is a recurrent-sensitive drive regime — weaker
+drive, threshold-proximal ongoing input, longer runs — where eviction
+drops matter and the curve can actually turn.
+
+**Open items, stated plainly:**
+1. The regime problem above is now the blocking scientific issue for PH5.
+2. The corpus fetch is running at reduced rate (server throttling after
+   sustained load: 6,400 -> 3,900 rows/s); resume-safe, not lost.
