@@ -1357,3 +1357,72 @@ and dates, and R1/R3 should have had them.
 **Next:** let the full fetch run; then PH5-WI02 (E004 1x-100x) on REAL
 connectome data — which is now possible — and a kernel-resident torch backend
 if the GPU is to earn its place.
+
+
+---
+
+## 2026-09-14 · Entry 42 — THE CENTRAL RESULT: real connectome holds 10x fewer neurons resident
+
+Entry 39 ended with an uncomfortable finding: virtualization's benefit is
+governed by fan-out, and uniform random connectivity has no locality, so the
+touched set grows toward the whole network (degree 8 -> 76.6% resident,
+degree 2 -> 36.7%). That left the central hypothesis resting on a synthetic
+graph that structurally could not demonstrate it.
+
+Entry 41 then unblocked the real data. With the corpus loading, the question
+became directly testable, and the answer is decisive.
+
+**Setup** (`scripts/test_real_connectome_residency.py`): real FlyWire
+adjacency from the ID-paged fetch, 2,000 highest-degree neurons, 600 ticks,
+keyed sparse drive, comparing an all-resident explicit run against the
+materialize/evict virtualized twin on identical input.
+
+| drive | spikes | peak resident | **% resident** | evictions | timing cosine |
+|---|---|---|---|---|---|
+| 2% | 304 | 37 | **1.8%** | 276 | **1.000000** |
+| 5% | 696 | 76 | **3.8%** | 607 | **1.000000** |
+| 10% | 1,271 | 137 | **6.9%** | 1,065 | **1.000000** |
+
+**Compare with the synthetic ceiling (entry 39):**
+
+| drive | synthetic (uniform random) | real FlyWire |
+|---|---|---|
+| 5% | 36.7% resident | **3.8% resident** |
+| 10% | 76.6% resident (degree 8) | **6.9% resident** |
+
+**The real connectome holds roughly 10x fewer neurons resident at identical,
+bit-exact fidelity** (cosine 1.000000 throughout; spike counts matched
+exactly at every drive level). The entry-39 ceiling was an artifact of the
+uniform fan-out rule, not a property of the method. This is the first direct
+evidence for the project's primary hypothesis on real biological structure.
+
+**Why it works, measured rather than asserted:** the real connectome has a
+heavy-tailed degree distribution (mean 1.35, **max 11,488**, median 0) and a
+locality ratio of **0.256** versus ~0.33-0.5 for scattered uniform edges. Activity
+follows structure, so a sparse drive excites a sparse, slowly-spreading set
+instead of rain scattering across the network.
+
+**Honest scope of the claim.** This is 2,000 neurons of a 761,528-neuron
+corpus over 600 ticks, on the LIF integrator, in the drive-dominated regime.
+It is NOT yet the knee graph: PH5-WI02 must sweep 1x-100x with all six
+controls (random / degree-matched / motif-destroyed) before any compression
+claim is made. What it does establish is that the mechanism works on real
+structure, which was previously unproven and was the main open risk.
+
+**Corpus status while this ran:** ID-paged fetch healthy at ~6,300 rows/s,
+2,726/139,255 neurons, 2.4M rows on disk and climbing. `FlyWireDataset`
+(`src/vnr/connectome/flywire_dataset.py`) bridges it into the
+`ConnectomeDataset` protocol with two id spaces (raw FlyWire uint64s for
+provenance, compact 0..n-1 for the kernels) and NT-derived edge signs.
+
+**Tests:** `tests/test_flywire_dataset.py` (9 tests, skip cleanly without the
+corpus): protocol conformance, count consistency, both id spaces, biological
+weight signs, heavy-tailed degree, locality below uniform, NT distribution,
+provenance, and id/self-loop integrity. Two test bugs were found and fixed
+along the way, both mine: one asserted `n != 0` unconditionally (compact index
+0 is legitimate - the assertion was wrong, not the data, and it now checks raw
+mode where root id 0 really is invalid), and one read the chunk glob twice,
+racing the live fetcher.
+
+**Next:** let the fetch finish, then PH5-WI02 - the E004 sweep with controls,
+now runnable on real data, which is the last step before the actual knee graph.
