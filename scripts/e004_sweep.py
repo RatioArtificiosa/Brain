@@ -109,9 +109,37 @@ def _control_edges(ds: FlyWireDataset, keep: list[int], kind: str, seed: int):
             i += out_degrees[n]
         return {n: [t for t in out[n] if t is not None] for n in keep}
     if kind == "motif_destroyed":
-        # Break local clustering: rewire each edge to a random target, keeping
-        # degree, which destroys triadic structure while preserving degree.
-        return {n: [rng.choice(keep) for _ in real[n]] for n in keep}
+        # Break TRIADIC structure while preserving BOTH out-degree and the
+        # edge-length distribution, so the control isolates motif content
+        # rather than re-testing locality (which `random` already covers).
+        #
+        # Method: collect every edge's SPAN (target - source), shuffle the
+        # span multiset, and reassign spans to sources. Out-degrees are
+        # untouched and the overall edge length distribution is identical,
+        # but which triangles exist is randomised. If the real graph still
+        # wins here, the advantage is triadic structure rather than merely
+        # having shorter edges.
+        spans = [t - n for n in keep for t in real[n]]
+        rng.shuffle(spans)
+        out_m: dict[int, list[int]] = {}
+        cursor = 0
+        for n in keep:
+            degree = out_degrees[n]
+            assigned = []
+            for span in spans[cursor : cursor + degree]:
+                cand = n + span
+                if cand not in keep_set:
+                    # Fall back to the nearest in-set node at that distance,
+                    # preserving the span as closely as the id space allows.
+                    cand = min(keep, key=lambda x: abs((x - n) - span))
+                assigned.append(cand)
+            out_m[n] = assigned
+            cursor += degree
+        if out_m == real:
+            raise ValueError(
+                "motif_destroyed produced no change; it is not a distinct control"
+            )
+        return out_m
     if kind == "hub_removed":
         ranked = sorted(keep, key=lambda x: -out_degrees[x])
         drop = set(ranked[: max(1, len(ranked) // 100)])
