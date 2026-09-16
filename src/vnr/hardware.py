@@ -122,7 +122,13 @@ def discover_hardware() -> HardwareProfile:
         if prof.torch_cuda_available:
             cap = torch.cuda.get_device_capability(0)
             prof.compute_capability = f"{cap[0]}.{cap[1]}"
-            prof.cuda_version = torch.version.cuda
+            # torch.version.cuda exists only on CUDA-enabled builds, and the
+            # type stubs do not always declare it. Read it defensively rather
+            # than assuming: this attribute's presence varies by wheel, which
+            # is exactly the kind of environment difference that made the GPU
+            # path look impossible for months (notes entry 41).
+            cuda = getattr(getattr(torch, "version", None), "cuda", None)
+            prof.cuda_version = str(cuda) if cuda else None
     except ImportError:
         pass
     prof.disk_free_bytes = shutil.disk_usage(os.getcwd()).free
