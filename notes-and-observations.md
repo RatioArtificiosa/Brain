@@ -1224,3 +1224,136 @@ All four gates clean.
 
 **Next:** PH5-WI02 (E004 scaling sweep) — unchanged, and now the reachable
 `vnr experiment four-way` makes it runnable with one command.
+
+
+---
+
+## 2026-09-14 · Entry 41 — TWO RECORDED VERDICTS OVERTURNED BY MEASUREMENT
+
+Both of the project's "blocked" paths — the live FlyWire download and the GPU —
+were blocked by *recorded conclusions that turn out to be wrong*. Neither had
+been re-tested against the actual current state of the world. This entry
+records what measurement found, because the correction matters more than the
+original assumption.
+
+### R1 (GPU) — OVERTURNED: CUDA works on the Quadro M5000
+
+**Recorded (entry 27):** "default pip gave CPU-only torch; the only CUDA line
+driver 537.99 can load (cu121) is retired from publication ('no matching
+distribution'); newer CUDA needs a driver past R560." Treated as a hard block
+for the project's whole history; the plan even says torch GPU is "mandatory,
+not optional."
+
+**What I measured instead** (`scripts/probe_torch_cuda.py`,
+`probe_torch_cp313.py`) — queried the PyTorch wheel indexes directly rather
+than trusting the claim:
+
+    torch 2.6.0 + cu118  ->  torch-2.6.0+cu118-cp313-cp313-win_amd64.whl
+    torch 2.7.1 + cu118  ->  torch-2.7.1+cu118-cp313-cp313-win_amd64.whl
+
+cu118 wheels exist for Python 3.13 on Windows. Driver 537.99 advertises
+CUDA 12.2, so cu118 is loadable. Installed `torch==2.7.1+cu118` and ran it:
+
+    torch: 2.7.1+cu118 | cuda build: 11.8
+    cuda available: True
+    device: Quadro M5000 | capability: (5, 2)
+    matmul max abs error (float64): 6.5e-13
+    1M-neuron LIF update x50: OK
+    VRAM free/total: 7.57/8.59 GB
+
+**And the project's own backend is correct on it:** `run_torch(..., device="cuda")`
+reproduces `run_explicit` **bit-exactly** — spike trains, final voltages, and
+refractory states all identical on a 256-neuron/400-tick run. The torch
+backend's CUDA branch had been implemented-but-untested since PH3-WI02; it is
+now TESTED. CUDA has never once run for this project until today.
+
+### But the honest performance result is that the GPU is SLOWER
+
+`scripts/bench_gpu.py`, 2,048 neurons x 1,200 ticks, median of 2:
+
+| backend | median | vs oracle |
+|---|---|---|
+| explicit (Python oracle) | 2.714 s | 1.00x |
+| **numpy (CPU vectorized)** | **0.641 s** | **4.23x** |
+| torch (CPU) | 9.213 s | 0.29x |
+| torch (CUDA, sm_52) | 18.875 s | 0.14x |
+
+**The GPU is correct and 29x slower than numpy on the CPU.** This is not a
+bug and it is not the GPU's fault: the current `run_torch` routes every event
+through Python (`for event in queue.drain_tick(t)`), so the GPU spends its time
+on per-tick kernel launches and implicit syncs while numpy does the whole
+population in a handful of vector ops. Importing data per tick is the classic
+way to make a GPU useless.
+
+**Consequence for the plan, recorded rather than glossed:** the GPU path is
+UNBLOCKED but NOT YET USEFUL. Making it useful requires kernel-resident event
+processing (PH3-WI02's original intent: batched event buffers, no per-event
+Python). That is now a *measurable* engineering task with a clear target —
+beat 0.641 s on this workload — instead of an impossible one. Until then,
+numpy-on-CPU is the correct production path, and that is what the CLI uses.
+
+### R3 (data) — OVERTURNED: the full corpus IS reachable, by ID paging
+
+**Recorded (entries 31/33):** the live download was "blocked on FlyWire
+production approval (owner)", and the bulk path was "100h+ — id-range paging is
+the designed next step, not yet implemented."
+
+**What I measured:**
+
+1. **Access probe** (`scripts/probe_all_access.py`, 8 candidate datastacks):
+   only `flywire_fafb_public` opens. `flywire_fafb_production` is 403; every
+   other name is **400 = does not exist** (not a hidden tier). Crucially,
+   `synapses_nt_v1` **and** `proofread_neurons` are READABLE on the public
+   datastack. So the data was never actually gated — the *paging strategy* was
+   the blocker.
+
+2. **OFFSET is confirmed dead** (`scripts/probe_fetch_ceiling.py`): 5,000-row
+   page latency, measured —
+
+   | offset | seconds | rows/s |
+   |---|---|---|
+   | 0 | 2.34 | 2,134 |
+   | 100,000 | 37.33 | 134 |
+   | 500,000 | 126.38 | 40 |
+   | 2,000,000 | 2,179.43 | 2 |
+
+   117x degradation from offset 0 to 5M. Full corpus by OFFSET = **1,774 hours
+   (74 days)**. Confirmed unrunnable, with numbers this time.
+
+3. **ID-paging is the unblock** (`scripts/probe_id_paging.py`): the neuron id
+   space is sparse (median gap 256, ~1.5e-3 ids per unit span), so range scans
+   would waste calls. But `filter_in_dict` on a single `pre_pt_root_id` returns
+   that neuron's synapses in **0.222 s median**, independent of any offset.
+   `proofread_neurons` enumerates **139,255 neurons** — exactly the published
+   FlyWire count, independently confirmed here.
+
+4. **Built and proved it** (`scripts/bulk_by_id.py`): resumable, ID-paged,
+   parquet-chunked, manifest-finalized. Pilot: **257,428 rows from 200 neurons
+   in 20 s = 12,445 rows/s**, versus 40 rows/s for OFFSET at that depth — a
+   **300x** improvement, and it survives interruption (verified: killed the run
+   mid-flight at 12 workers, 789 neurons completed, progress intact, failed
+   neurons correctly NOT marked done so they retry).
+
+   **Rate limiting is real:** 12 workers provoked HTTP 429. The fetcher now
+   honours `Retry-After` and backs off; default lowered to **4 workers**, the
+   measured-safe level.
+
+### Operational fix: the watch protocol was lying too
+
+`.watch/` was `PAUSED` with a **dead** watchdog PID (82516) and a **39-hour**
+stale heartbeat — both alarm conditions permanently true, no daemon running.
+`scripts/restore_watch.py` restored the truthful state (ACTIVE, fresh
+heartbeat, dead pid file removed, `state.json` written explaining that the
+daemon is deliberately not auto-started because the poke path is the only
+mechanism proven to reach a live session).
+
+### The pattern worth carrying forward
+
+Three separate "blocked"/"impossible" items in this project were each a stale
+conclusion, not a wall. The fix in every case was the same: **re-measure the
+claim instead of inheriting it.** Recorded verdicts need re-entry conditions
+and dates, and R1/R3 should have had them.
+
+**Next:** let the full fetch run; then PH5-WI02 (E004 1x-100x) on REAL
+connectome data — which is now possible — and a kernel-resident torch backend
+if the GPU is to earn its place.
