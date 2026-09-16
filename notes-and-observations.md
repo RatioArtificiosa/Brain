@@ -1426,3 +1426,76 @@ racing the live fetcher.
 
 **Next:** let the fetch finish, then PH5-WI02 - the E004 sweep with controls,
 now runnable on real data, which is the last step before the actual knee graph.
+
+
+---
+
+## 2026-09-14 · Entry 43 — E004 sweep on REAL data: structure wins, but the knee is NOT yet found
+
+First run of the plan's central experiment (§37/§38-39) against real FlyWire
+connectivity. **Headline: the real connectome beats every destroyed control,
+and fidelity never broke — which means the knee is still unexplored.**
+
+**Method** (`scripts/e004_sweep.py`, analysis in `scripts/analyze_e004.py`).
+Base: 400 highest-degree neurons from the real corpus (1,027,157 neurons
+loaded at run time), 300 ticks, keyed sparse drive (8 hot neurons), compared
+against ONE fully-explicit reference over the same node set. The compression
+axis is the **resident budget** — measured over a first, buggy revision that
+varied NETWORK SIZE instead and produced a meaningless rate_ratio of 5.65
+(shrink the network, score it against a full-size reference, and the
+comparison is vacuous). Fixed before recording anything.
+
+**Result — minimum residency achieved at PASSING fidelity:**
+
+| condition | min resident | at budget | cosine |
+|---|---|---|---|
+| **locality_preserved_only** | **12.2%** | 6.25% | 1.000000 |
+| real FlyWire | 14.8% | 6.25% | 1.000000 |
+| hub_removed | 14.8% | 6.25% | 1.000000 |
+| degree_matched_shuffle | 18.5% | 6.25% | 1.000000 |
+| random | 19.0% | 6.25% | 1.000000 |
+| motif_destroyed | 19.0% | 6.25% | 1.000000 |
+
+**CONTROL VERDICT — the primary hypothesis holds:**
+
+    real vs random                  1.29x better (real WINS)
+    real vs degree_matched_shuffle  1.25x better (real WINS)
+    real vs motif_destroyed         1.29x better (real WINS)
+    real vs hub_removed             tie
+    real vs locality_preserved_only LOSES (12.2% vs 14.8%)
+
+Two conclusions, both earned:
+
+1. **Connectome-derived structure beats matched random controls.** Preserving
+   real wiring keeps ~1.25-1.29x fewer neurons resident than randomising it at
+   identical fidelity. That is secondary hypothesis (a), confirmed on real
+   data with a null model rather than asserted.
+
+2. **Locality is the governing variable, not "bio-ness".** The
+   locality-preserved-only variant — real edges filtered to the shorter half
+   of spans — beat the full connectome (12.2% vs 14.8%). Long-range edges are
+   what cost residency, exactly as entry 39's fan-out finding predicted. This
+   is a mechanism, not a metaphor, and it is now measured.
+
+**NO KNEE FOUND.** Fidelity held (cosine 1.000000, rate 1.0000, gate PASS) at
+every budget tested, down to 6.25%, across all six conditions. Per the plan's
+own rule, that means **no compression claim can be made yet** — the curve has
+not turned. Headroom remains unexplored, and the next step is to push harder:
+smaller budgets, weaker/sparser drive, longer runs, and a drive regime where
+recurrent input actually matters (the current drive-dominated regime is the
+§71 caveat: it is insensitive to recurrent weight precision).
+
+**Honest limitation worth stating up front.** `random` and `motif_destroyed`
+produced IDENTICAL curves (64.2% → 19.0% at every budget). They should not:
+the motif control is meant to destroy triadic structure specifically. Either
+the implementation is degenerate (both reduce to "rewire targets uniformly")
+or the measured quantities cannot distinguish them at this scale. Suspect the
+former — `motif_destroyed` currently rewires to a uniform random target,
+which IS what `random` does. The motif control needs to preserve degree AND
+short-range structure while breaking only triangles, or it is not a control.
+
+**Artifacts:** `artifacts/e004_sweep.json` (full curve, all six conditions).
+
+**Next:** fix the motif control; push the sweep past the knee (the axis is
+budget down to 1-2%, plus a recurrent-sensitive drive regime); then the knee
+graph itself.
