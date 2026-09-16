@@ -208,11 +208,13 @@ def run(max_neurons: int | None, workers: int, chunk_size: int) -> int:
     client = _client()
     buffer: list = []
     total_rows = 0
+    fetched_rows = 0
     total_dropped = 0
     failures: list[int] = []
     completed = list(done)
     start = time.perf_counter()
     chunk_index = len(sorted(DATA_DIR.glob("byid-*.parquet")))
+    last_flush = time.perf_counter()
 
     def flush() -> None:
         nonlocal buffer, chunk_index, total_rows
@@ -243,15 +245,44 @@ def run(max_neurons: int | None, workers: int, chunk_size: int) -> int:
                 total_dropped += dropped
                 if frame is not None:
                     buffer.append(frame)
+                    # Count rows as they ARRIVE, not only when flushed: the
+                    # progress line previously read "0 rows/s" for minutes
+                    # because total_rows was only incremented inside flush()
+                    # (notes entry 41).
+                    fetched_rows += len(frame)
                 completed.append(nid)
             except Exception as exc:  # noqa: BLE001 - record and continue
                 failures.append(nid)
                 print(f"  FAILED neuron {nid}: {str(exc)[:80]}", flush=True)
-            if len(buffer) >= chunk_size:
+            if len(buffer) >= chunk_size or (
+                buffer and time.perf_counter() - last_flush > 120.0
+            ):
                 flush()
-            if i % 200 == 0:
+                last_flush = time.perf_counter()
+            # Durable progress: the cursor is written every 25 neurons, not
+            # only on chunk flush. A 100k-row chunk can take many minutes to
+            # fill, and a run killed in that window previously lost ALL
+            # progress since the last flush (observed: cursor stuck at 789
+            # while the fetch was healthy - notes entry 41).
+            if i % 25 == 0:
                 DONE_CURSOR.write_text(
                     json.dumps(sorted(set(completed))), encoding="utf-8"
+                )
+                rate = fetched_rows / max(time.perf_counter() - start, 1e-9)
+                neurons_per_s = (len(completed) - len(done)) / max(
+                    time.perf_counter() - start, 1e-9
+                )
+                remaining = len(ids) - len(completed)
+                eta_h = (
+                    (remaining / neurons_per_s / 3600)
+                    if neurons_per_s > 0
+                    else float("inf")
+                )
+                print(
+                    f"  .. {len(completed):,}/{len(ids):,} neurons | "
+                    f"{fetched_rows:,} rows | {rate:,.0f} rows/s | "
+                    f"ETA {eta_h:.1f}h",
+                    flush=True,
                 )
 
     flush()
